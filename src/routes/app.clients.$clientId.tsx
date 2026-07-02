@@ -59,7 +59,7 @@ function ClientDashboard() {
             </p>
             <h1 className="font-display text-3xl font-semibold">{client.name}</h1>
             <div className="mt-1 flex gap-1.5">
-              {client.accounts.map((a) => (
+              {client.accounts.map((a: (typeof client.accounts)[number]) => (
                 <PlatformBadge key={a.accountId} platform={a.platform} />
               ))}
             </div>
