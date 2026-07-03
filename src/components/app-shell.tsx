@@ -20,13 +20,11 @@ const nav = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const navigate = useNavigate();
   const { location } = useRouterState();
-  const [user, setUser] = useState<{ email: string; name: string } | null>(null);
+  const { user, profile, signOut, loading } = useAuth();
 
-  useEffect(() => {
-    setUser(getMockUser());
-  }, []);
+  const displayName = profile?.name ?? user?.email?.split("@")[0] ?? "Usuário";
+  const displayEmail = user?.email ?? "—";
 
   const isActive = (to: string, exact: boolean) =>
     exact ? location.pathname === to : location.pathname.startsWith(to);
