@@ -24,7 +24,7 @@ function LoginPage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
-        navigate({ to: "/app" });
+        navigate({ to: "/app", replace: true });
       }
     });
   }, [navigate]);
