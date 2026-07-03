@@ -1,2 +1,2 @@
-import "@fontsource-variable/sora";
-import "@fontsource-variable/manrope";
+import "@fontsource-variable/sora/index.css";
+import "@fontsource-variable/manrope/index.css";
