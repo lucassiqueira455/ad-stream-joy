@@ -36,18 +36,18 @@ function Landing() {
             <a href="#pricing" className="hover:text-foreground">Preço</a>
           </nav>
           <div className="flex items-center gap-2">
-            <Link
-              to="/login"
-              className="hidden text-sm text-muted-foreground hover:text-foreground sm:block"
-            >
-              Entrar
-            </Link>
-            <Link
-              to="/login"
-              className="rounded-lg gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-glow"
-            >
-              Começar grátis
-            </Link>
+          <Link
+            to="/auth"
+            className="hidden text-sm text-muted-foreground hover:text-foreground sm:block"
+          >
+            Entrar
+          </Link>
+          <Link
+            to="/auth"
+            className="rounded-lg gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-glow"
+          >
+            Começar grátis
+          </Link>
           </div>
         </div>
       </header>
