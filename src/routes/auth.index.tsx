@@ -48,7 +48,7 @@ function LoginPage() {
       return;
     }
 
-    navigate({ to: "/app" });
+    navigate({ to: "/app", replace: true });
   };
 
   const handleGoogleSignIn = async () => {
