@@ -71,7 +71,7 @@ function Landing() {
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Link
-                to="/login"
+                to="/auth"
                 className="inline-flex items-center gap-2 rounded-lg gradient-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-glow"
               >
                 Entrar no dashboard
