@@ -36,18 +36,18 @@ function Landing() {
             <a href="#pricing" className="hover:text-foreground">Preço</a>
           </nav>
           <div className="flex items-center gap-2">
-            <Link
-              to="/login"
-              className="hidden text-sm text-muted-foreground hover:text-foreground sm:block"
-            >
-              Entrar
-            </Link>
-            <Link
-              to="/login"
-              className="rounded-lg gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-glow"
-            >
-              Começar grátis
-            </Link>
+          <Link
+            to="/auth"
+            className="hidden text-sm text-muted-foreground hover:text-foreground sm:block"
+          >
+            Entrar
+          </Link>
+          <Link
+            to="/auth"
+            className="rounded-lg gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-glow"
+          >
+            Começar grátis
+          </Link>
           </div>
         </div>
       </header>
@@ -71,7 +71,7 @@ function Landing() {
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Link
-                to="/login"
+                to="/auth"
                 className="inline-flex items-center gap-2 rounded-lg gradient-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-glow"
               >
                 Entrar no dashboard
@@ -224,7 +224,7 @@ function Landing() {
           contas reais dos seus clientes.
         </p>
         <Link
-          to="/login"
+          to="/auth"
           className="mt-8 inline-flex items-center gap-2 rounded-lg gradient-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow"
         >
           Entrar no dashboard

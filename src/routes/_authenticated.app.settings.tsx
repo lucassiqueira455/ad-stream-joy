@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertCircle, Link2 } from "lucide-react";
 
-export const Route = createFileRoute("/app/settings")({
+export const Route = createFileRoute("/_authenticated/app/settings")({
   component: Settings,
 });
 

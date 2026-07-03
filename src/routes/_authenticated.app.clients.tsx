@@ -3,7 +3,7 @@ import { Plus, ChevronRight } from "lucide-react";
 import { PlatformBadge } from "@/components/platform-badge";
 import { aggregate, buildDaily, clients, money, num } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/app/clients")({
+export const Route = createFileRoute("/_authenticated/app/clients")({
   component: ClientsList,
 });
 

@@ -1,4 +1,4 @@
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Users,
@@ -10,8 +10,7 @@ import {
 import type { ReactNode } from "react";
 import { Logo } from "./logo";
 import { clients } from "@/lib/mock-data";
-import { getMockUser, signOutMock } from "@/lib/auth-mock";
-import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 const nav = [
   { to: "/app", label: "Visão geral", icon: LayoutDashboard, exact: true },
@@ -21,13 +20,11 @@ const nav = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const navigate = useNavigate();
   const { location } = useRouterState();
-  const [user, setUser] = useState<{ email: string; name: string } | null>(null);
+  const { user, profile, signOut, loading } = useAuth();
 
-  useEffect(() => {
-    setUser(getMockUser());
-  }, []);
+  const displayName = profile?.name ?? user?.email?.split("@")[0] ?? "Usuário";
+  const displayEmail = user?.email ?? "—";
 
   const isActive = (to: string, exact: boolean) =>
     exact ? location.pathname === to : location.pathname.startsWith(to);
@@ -100,23 +97,21 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="border-t border-sidebar-border p-3">
           <div className="flex items-center gap-3 rounded-lg px-2 py-2">
             <div className="grid h-8 w-8 place-items-center rounded-full gradient-primary text-xs font-semibold text-primary-foreground">
-              {(user?.name ?? "?").slice(0, 1).toUpperCase()}
+              {displayName.slice(0, 1).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium capitalize">
-                {user?.name ?? "Visitante"}
+                {displayName}
               </p>
               <p className="truncate text-xs text-sidebar-foreground/60">
-                {user?.email ?? "—"}
+                {displayEmail}
               </p>
             </div>
             <button
               type="button"
-              onClick={() => {
-                signOutMock();
-                navigate({ to: "/login" });
-              }}
-              className="rounded-md p-1.5 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              onClick={() => signOut()}
+              disabled={loading}
+              className="rounded-md p-1.5 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               aria-label="Sair"
             >
               <LogOut className="h-4 w-4" />

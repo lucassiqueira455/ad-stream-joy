@@ -22,7 +22,7 @@ import {
   pct,
 } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/app/clients/$clientId")({
+export const Route = createFileRoute("/_authenticated/app/clients/$clientId")({
   loader: ({ params }) => {
     const client = getClient(params.clientId);
     if (!client) throw notFound();
