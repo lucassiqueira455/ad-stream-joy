@@ -1,4 +1,4 @@
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Users,
@@ -10,8 +10,7 @@ import {
 import type { ReactNode } from "react";
 import { Logo } from "./logo";
 import { clients } from "@/lib/mock-data";
-import { getMockUser, signOutMock } from "@/lib/auth-mock";
-import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 const nav = [
   { to: "/app", label: "Visão geral", icon: LayoutDashboard, exact: true },
