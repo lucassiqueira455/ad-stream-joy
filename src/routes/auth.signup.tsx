@@ -55,7 +55,7 @@ function SignupPage() {
       return;
     }
 
-    navigate({ to: "/app" });
+    navigate({ to: "/app", replace: true });
   };
 
   const handleGoogleSignUp = async () => {
