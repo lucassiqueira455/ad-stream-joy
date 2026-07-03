@@ -224,7 +224,7 @@ function Landing() {
           contas reais dos seus clientes.
         </p>
         <Link
-          to="/login"
+          to="/auth"
           className="mt-8 inline-flex items-center gap-2 rounded-lg gradient-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow"
         >
           Entrar no dashboard
