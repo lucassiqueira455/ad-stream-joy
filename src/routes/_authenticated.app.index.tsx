@@ -17,7 +17,7 @@ import {
   pct,
 } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/app/")({
+export const Route = createFileRoute("/_authenticated/app/")({
   component: Overview,
 });
 
