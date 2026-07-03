@@ -1,4 +1,4 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -7,21 +7,52 @@ export const Route = createFileRoute("/auth/callback")({
 });
 
 function AuthCallback() {
+  const navigate = useNavigate({ from: "/auth/callback" });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth
-      .getSession()
-      .then(({ data: { session }, error: sessionError }) => {
-        if (sessionError) {
-          setError(sessionError.message);
-          return;
-        }
-        if (!session) {
-          setError("Sessão não encontrada. Tente fazer login novamente.");
+    let mounted = true;
+
+    const checkSession = async () => {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (!mounted) return;
+
+      if (sessionError) {
+        setError(sessionError.message);
+        return;
+      }
+
+      if (data.session?.user) {
+        navigate({ to: "/app", replace: true });
+        return;
+      }
+
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event, session) => {
+        if (!mounted) return;
+        if (event === "SIGNED_IN" && session) {
+          navigate({ to: "/app", replace: true });
         }
       });
-  }, []);
+
+      setTimeout(() => {
+        if (!mounted) return;
+        subscription.unsubscribe();
+        setError("Sessão não encontrada. Tente fazer login novamente.");
+      }, 5000);
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    };
+
+    checkSession();
+
+    return () => {
+      mounted = false;
+    };
+  }, [navigate]);
 
   if (error) {
     return (
@@ -36,5 +67,12 @@ function AuthCallback() {
     );
   }
 
-  return <Navigate to="/app" />;
+  return (
+    <div className="grid min-h-screen place-items-center bg-background px-6">
+      <div className="text-center">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <p className="mt-4 text-sm text-muted-foreground">Conectando sua conta…</p>
+      </div>
+    </div>
+  );
 }
