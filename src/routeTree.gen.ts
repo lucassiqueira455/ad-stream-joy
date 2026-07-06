@@ -20,6 +20,7 @@ import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenticated.app.settings'
 import { Route as AuthenticatedAppReportsRouteImport } from './routes/_authenticated.app.reports'
 import { Route as AuthenticatedAppClientsRouteImport } from './routes/_authenticated.app.clients'
+import { Route as ApiAuthMetaCallbackRouteImport } from './routes/api/auth/meta.callback'
 import { Route as AuthenticatedAppClientsClientIdRouteImport } from './routes/_authenticated.app.clients.$clientId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -77,6 +78,11 @@ const AuthenticatedAppClientsRoute = AuthenticatedAppClientsRouteImport.update({
   path: '/clients',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const ApiAuthMetaCallbackRoute = ApiAuthMetaCallbackRouteImport.update({
+  id: '/api/auth/meta/callback',
+  path: '/api/auth/meta/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAppClientsClientIdRoute =
   AuthenticatedAppClientsClientIdRouteImport.update({
     id: '/$clientId',
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/app/clients/$clientId': typeof AuthenticatedAppClientsClientIdRoute
+  '/api/auth/meta/callback': typeof ApiAuthMetaCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/app/clients/$clientId': typeof AuthenticatedAppClientsClientIdRoute
+  '/api/auth/meta/callback': typeof ApiAuthMetaCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/_authenticated/app/settings': typeof AuthenticatedAppSettingsRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/clients/$clientId': typeof AuthenticatedAppClientsClientIdRoute
+  '/api/auth/meta/callback': typeof ApiAuthMetaCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -137,6 +146,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/'
     | '/app/clients/$clientId'
+    | '/api/auth/meta/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app'
     | '/app/clients/$clientId'
+    | '/api/auth/meta/callback'
   id:
     | '__root__'
     | '/'
@@ -162,12 +173,14 @@ export interface FileRouteTypes {
     | '/_authenticated/app/settings'
     | '/_authenticated/app/'
     | '/_authenticated/app/clients/$clientId'
+    | '/api/auth/meta/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
+  ApiAuthMetaCallbackRoute: typeof ApiAuthMetaCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -249,6 +262,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppClientsRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/api/auth/meta/callback': {
+      id: '/api/auth/meta/callback'
+      path: '/api/auth/meta/callback'
+      fullPath: '/api/auth/meta/callback'
+      preLoaderRoute: typeof ApiAuthMetaCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/app/clients/$clientId': {
       id: '/_authenticated/app/clients/$clientId'
       path: '/$clientId'
@@ -320,17 +340,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
+  ApiAuthMetaCallbackRoute: ApiAuthMetaCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
