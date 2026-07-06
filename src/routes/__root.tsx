@@ -79,14 +79,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "TráfegoLab — Relatórios de Meta Ads e Google Ads para agências" },
+      { title: "TráfegoLab — Relatórios de Meta Ads e Google Ads" },
       {
         name: "description",
         content:
           "Conecte contas de Meta Ads e Google Ads, acompanhe métricas de tráfego pago e gere relatórios de marca em PDF ou link compartilhável.",
       },
       { name: "author", content: "TráfegoLab" },
-      { property: "og:title", content: "TráfegoLab — Relatórios de tráfego pago" },
+      { property: "og:title", content: "TráfegoLab — Relatórios de Meta Ads e Google Ads" },
       {
         property: "og:description",
         content:
@@ -94,6 +94,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "TráfegoLab — Relatórios de Meta Ads e Google Ads" },
+      { name: "description", content: "Plataforma para agências: conecte Meta Ads e Google Ads, gere dashboards multi-cliente e relatórios em PDF ou link público." },
+      { property: "og:description", content: "Plataforma para agências: conecte Meta Ads e Google Ads, gere dashboards multi-cliente e relatórios em PDF ou link público." },
+      { name: "twitter:description", content: "Plataforma para agências: conecte Meta Ads e Google Ads, gere dashboards multi-cliente e relatórios em PDF ou link público." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/afd10e38-6df2-4b38-8dd9-924263e200f9/id-preview-bbcc5d0b--eb42a111-1714-4f00-85bc-f0c40ccb97b4.lovable.app-1783042517152.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/afd10e38-6df2-4b38-8dd9-924263e200f9/id-preview-bbcc5d0b--eb42a111-1714-4f00-85bc-f0c40ccb97b4.lovable.app-1783042517152.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
