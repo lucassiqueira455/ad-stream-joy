@@ -14,6 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_accounts: {
+        Row: {
+          account_name: string
+          client_id: string | null
+          connection_id: string
+          created_at: string
+          currency: string | null
+          external_account_id: string
+          id: string
+          platform: string
+          status: string | null
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_name: string
+          client_id?: string | null
+          connection_id: string
+          created_at?: string
+          currency?: string | null
+          external_account_id: string
+          id?: string
+          platform: string
+          status?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_name?: string
+          client_id?: string | null
+          connection_id?: string
+          created_at?: string
+          currency?: string | null
+          external_account_id?: string
+          id?: string
+          platform?: string
+          status?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_accounts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_accounts_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "ad_platform_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_platform_connections: {
+        Row: {
+          access_token_encrypted: string
+          created_at: string
+          display_name: string | null
+          expires_at: string | null
+          external_user_id: string | null
+          id: string
+          platform: string
+          refresh_token_encrypted: string | null
+          scopes: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token_encrypted: string
+          created_at?: string
+          display_name?: string | null
+          expires_at?: string | null
+          external_user_id?: string | null
+          id?: string
+          platform: string
+          refresh_token_encrypted?: string | null
+          scopes?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token_encrypted?: string
+          created_at?: string
+          display_name?: string | null
+          expires_at?: string | null
+          external_user_id?: string | null
+          id?: string
+          platform?: string
+          refresh_token_encrypted?: string | null
+          scopes?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           brand_color: string
