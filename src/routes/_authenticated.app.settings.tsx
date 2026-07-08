@@ -77,7 +77,18 @@ function Settings() {
     setConnecting(true);
     try {
       const res = await startMeta();
-      window.location.href = res.url;
+      // Facebook OAuth refuses to load inside iframes (e.g. Lovable preview).
+      // Try to navigate the top window; if cross-origin blocks it, open in a new tab.
+      try {
+        if (window.top && window.top !== window.self) {
+          window.top.location.href = res.url;
+        } else {
+          window.location.href = res.url;
+        }
+      } catch {
+        window.open(res.url, "_blank", "noopener,noreferrer");
+        setConnecting(false);
+      }
     } catch (e) {
       console.error(e);
       setConnecting(false);
