@@ -21,13 +21,13 @@ export function useAuth(): AuthState {
       .from("profiles")
       .select("*")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
     if (error) {
       console.error("Failed to load profile:", error);
       setProfile(null);
       return;
     }
-    setProfile(data as Profile);
+    setProfile((data as Profile) ?? null);
   }, []);
 
   const refresh = useCallback(async () => {
