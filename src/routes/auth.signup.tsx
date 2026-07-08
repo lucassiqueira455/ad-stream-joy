@@ -47,7 +47,16 @@ function SignupPage() {
     setLoading(false);
 
     if (signUpError) {
-      setError("Erro ao criar conta. Tente novamente.");
+      const msg = signUpError.message?.toLowerCase() ?? "";
+      if (msg.includes("weak") || signUpError.code === "weak_password") {
+        setError("Senha muito fraca ou vazada. Use uma senha mais forte (misture letras, números e símbolos).");
+      } else if (msg.includes("registered") || msg.includes("already")) {
+        setError("E-mail já cadastrado. Tente fazer login.");
+      } else if (msg.includes("invalid") && msg.includes("email")) {
+        setError("E-mail inválido.");
+      } else {
+        setError(signUpError.message || "Erro ao criar conta. Tente novamente.");
+      }
       return;
     }
 
@@ -63,18 +72,19 @@ function SignupPage() {
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: `${window.location.origin}/auth/callback`,
     });
 
-    setLoading(false);
-
-    if (error) {
-      setError("Erro ao iniciar cadastro com Google.");
+    if (result.error) {
+      setLoading(false);
+      setError("Erro ao cadastrar com Google. Tente novamente.");
+      return;
     }
+
+    if (result.redirected) return;
+
+    navigate({ to: "/app", replace: true });
   };
 
   return (
