@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Mail, Lock, ArrowRight, Chrome } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 
 export const Route = createFileRoute("/auth/")({
   head: () => ({
@@ -55,18 +56,19 @@ function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: `${window.location.origin}/auth/callback`,
     });
 
-    setLoading(false);
-
-    if (error) {
-      setError("Erro ao iniciar login com Google.");
+    if (result.error) {
+      setLoading(false);
+      setError("Erro ao entrar com Google. Tente novamente.");
+      return;
     }
+
+    if (result.redirected) return;
+
+    navigate({ to: "/app", replace: true });
   };
 
   return (
