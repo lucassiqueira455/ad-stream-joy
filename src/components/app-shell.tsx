@@ -120,7 +120,40 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 md:pl-64">{children}</main>
+      {/* Mobile top bar */}
+      <header className="fixed inset-x-0 top-0 z-20 flex items-center gap-2 border-b border-sidebar-border bg-sidebar px-3 py-2 md:hidden">
+        <Link to="/app" className="mr-1"><Logo /></Link>
+        <nav className="ml-auto flex items-center gap-1 overflow-x-auto">
+          {nav.map((item) => {
+            const active = isActive(item.to, item.exact);
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                aria-label={item.label}
+                className={`grid h-9 w-9 place-items-center rounded-md ${
+                  active
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50"
+                }`}
+              >
+                <item.icon className="h-4 w-4" />
+              </Link>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => signOut()}
+            disabled={loading}
+            aria-label="Sair"
+            className="grid h-9 w-9 place-items-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent/50 disabled:opacity-50"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        </nav>
+      </header>
+
+      <main className="flex-1 pt-14 md:pl-64 md:pt-0">{children}</main>
     </div>
   );
 }
