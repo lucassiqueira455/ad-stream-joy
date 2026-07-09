@@ -7,8 +7,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { DailyPoint } from "@/lib/mock-data";
 import { money } from "@/lib/mock-data";
+
+export type DailyPoint = {
+  date: string;
+  spend: number;
+};
 
 export function SpendChart({ data }: { data: DailyPoint[] }) {
   return (

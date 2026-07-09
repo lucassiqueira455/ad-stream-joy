@@ -9,7 +9,9 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Logo } from "./logo";
-import { clients } from "@/lib/mock-data";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { initialsFromName } from "@/lib/mock-data";
 import { useAuth } from "@/hooks/use-auth";
 
 const nav = [
