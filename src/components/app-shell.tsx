@@ -25,6 +25,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { location } = useRouterState();
   const { user, profile, signOut, loading } = useAuth();
 
+  const { data: clients = [] } = useQuery({
+    queryKey: ["sidebar-clients"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name, brand_color, logo")
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!user,
+  });
+
   const displayName = profile?.name ?? user?.email?.split("@")[0] ?? "Usuário";
   const displayEmail = user?.email ?? "—";
 
@@ -78,9 +91,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 >
                   <span
                     className="grid h-6 w-6 place-items-center rounded-md text-[10px] font-semibold text-background"
-                    style={{ backgroundColor: c.brandColor }}
+                    style={{ backgroundColor: c.brand_color }}
                   >
-                    {c.logo}
+                    {c.logo ?? initialsFromName(c.name)}
                   </span>
                   <span className="truncate">{c.name}</span>
                 </Link>
