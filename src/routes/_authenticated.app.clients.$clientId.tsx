@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Link2, Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { PlatformBadge } from "@/components/platform-badge";
+import { ClientMetrics } from "@/components/client-metrics";
 import { supabase } from "@/integrations/supabase/client";
 import {
   listAdAccounts,
