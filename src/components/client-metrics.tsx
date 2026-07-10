@@ -227,6 +227,22 @@ export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; has
         <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-6 text-sm text-destructive">
           Erro ao carregar métricas: {(query.error as Error).message}
         </div>
+      ) : (query.data?.accounts ?? []).some((a) => a.error) && !totals ? (
+        <div className="space-y-2 rounded-xl border border-destructive/40 bg-destructive/5 p-6 text-sm">
+          <p className="font-medium text-destructive">Erro ao buscar dados no Meta:</p>
+          <ul className="list-disc space-y-1 pl-5 text-destructive/90">
+            {query.data!.accounts.filter((a) => a.error).map((a) => (
+              <li key={a.account.id}>
+                <span className="font-medium">{a.account.account_name}:</span> {a.error}
+              </li>
+            ))}
+          </ul>
+          <p className="pt-2 text-xs text-muted-foreground">
+            "API access blocked" normalmente significa que o app Meta ainda não tem
+            acesso avançado a <code>ads_read</code>, ou o usuário conectado não é
+            admin da BM/conta. Verifique a conexão em Integrações e reconecte.
+          </p>
+        </div>
       ) : !totals ? (
         <div className="rounded-xl border border-dashed border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">
           Sem dados no período selecionado.
