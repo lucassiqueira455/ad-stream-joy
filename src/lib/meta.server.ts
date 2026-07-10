@@ -111,3 +111,73 @@ export function metaStatusLabel(status: number | undefined): string {
     default: return "unknown";
   }
 }
+
+export interface MetaInsights {
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  cpm: number;
+  reach: number;
+  frequency: number;
+  conversions: number;
+  cost_per_conversion: number;
+}
+
+export async function fetchAdAccountInsights(params: {
+  token: string;
+  externalAccountId: string; // numeric, without "act_"
+  datePreset?: string;
+}): Promise<MetaInsights> {
+  const { token, externalAccountId, datePreset = "last_30d" } = params;
+  const url = new URL(`${GRAPH}/act_${externalAccountId}/insights`);
+  url.searchParams.set(
+    "fields",
+    "spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions",
+  );
+  url.searchParams.set("date_preset", datePreset);
+  url.searchParams.set("access_token", token);
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`Meta insights failed: ${await res.text()}`);
+  const json = (await res.json()) as {
+    data?: Array<{
+      spend?: string;
+      impressions?: string;
+      clicks?: string;
+      ctr?: string;
+      cpc?: string;
+      cpm?: string;
+      reach?: string;
+      frequency?: string;
+      actions?: Array<{ action_type: string; value: string }>;
+    }>;
+  };
+  const row = json.data?.[0];
+  if (!row) {
+    return {
+      spend: 0, impressions: 0, clicks: 0, ctr: 0, cpc: 0, cpm: 0,
+      reach: 0, frequency: 0, conversions: 0, cost_per_conversion: 0,
+    };
+  }
+  const num = (v: string | undefined) => (v ? Number(v) : 0);
+  const conversions = (row.actions ?? [])
+    .filter((a) =>
+      ["purchase", "offsite_conversion.fb_pixel_purchase", "onsite_conversion.purchase", "lead", "complete_registration"].includes(a.action_type),
+    )
+    .reduce((sum, a) => sum + Number(a.value || 0), 0);
+  const spend = num(row.spend);
+  return {
+    spend,
+    impressions: num(row.impressions),
+    clicks: num(row.clicks),
+    ctr: num(row.ctr),
+    cpc: num(row.cpc),
+    cpm: num(row.cpm),
+    reach: num(row.reach),
+    frequency: num(row.frequency),
+    conversions,
+    cost_per_conversion: conversions > 0 ? spend / conversions : 0,
+  };
+}
+

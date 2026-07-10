@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Link2, Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { PlatformBadge } from "@/components/platform-badge";
+import { ClientMetrics } from "@/components/client-metrics";
 import { supabase } from "@/integrations/supabase/client";
 import {
   listAdAccounts,
@@ -220,11 +221,7 @@ function ClientDashboard() {
         </div>
       </section>
 
-      <section className="mt-8 rounded-xl border border-dashed border-border bg-card/40 p-8 text-center">
-        <p className="text-sm text-muted-foreground">
-          Assim que uma conta estiver vinculada, os dashboards de métricas aparecerão aqui.
-        </p>
-      </section>
+      <ClientMetrics clientId={clientId} hasAccounts={assigned.length > 0} />
     </div>
   );
 }
