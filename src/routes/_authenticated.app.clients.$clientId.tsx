@@ -221,11 +221,7 @@ function ClientDashboard() {
         </div>
       </section>
 
-      <section className="mt-8 rounded-xl border border-dashed border-border bg-card/40 p-8 text-center">
-        <p className="text-sm text-muted-foreground">
-          Assim que uma conta estiver vinculada, os dashboards de métricas aparecerão aqui.
-        </p>
-      </section>
+      <ClientMetrics clientId={clientId} hasAccounts={assigned.length > 0} />
     </div>
   );
 }
