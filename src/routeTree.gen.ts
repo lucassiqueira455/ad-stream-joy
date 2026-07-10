@@ -19,7 +19,7 @@ import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated.ap
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated.app.index'
 import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenticated.app.settings'
 import { Route as AuthenticatedAppReportsRouteImport } from './routes/_authenticated.app.reports'
-import { Route as AuthenticatedAppClientsRouteImport } from './routes/_authenticated.app.clients'
+import { Route as AuthenticatedAppClientsIndexRouteImport } from './routes/_authenticated.app.clients.index'
 import { Route as ApiAuthMetaCallbackRouteImport } from './routes/api/auth/meta.callback'
 import { Route as AuthenticatedAppClientsClientIdRouteImport } from './routes/_authenticated.app.clients.$clientId'
 
@@ -73,11 +73,12 @@ const AuthenticatedAppReportsRoute = AuthenticatedAppReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
-const AuthenticatedAppClientsRoute = AuthenticatedAppClientsRouteImport.update({
-  id: '/clients',
-  path: '/clients',
-  getParentRoute: () => AuthenticatedAppRoute,
-} as any)
+const AuthenticatedAppClientsIndexRoute =
+  AuthenticatedAppClientsIndexRouteImport.update({
+    id: '/clients/',
+    path: '/clients/',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const ApiAuthMetaCallbackRoute = ApiAuthMetaCallbackRouteImport.update({
   id: '/api/auth/meta/callback',
   path: '/api/auth/meta/callback',
@@ -85,9 +86,9 @@ const ApiAuthMetaCallbackRoute = ApiAuthMetaCallbackRouteImport.update({
 } as any)
 const AuthenticatedAppClientsClientIdRoute =
   AuthenticatedAppClientsClientIdRouteImport.update({
-    id: '/$clientId',
-    path: '/$clientId',
-    getParentRoute: () => AuthenticatedAppClientsRoute,
+    id: '/clients/$clientId',
+    path: '/clients/$clientId',
+    getParentRoute: () => AuthenticatedAppRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -97,24 +98,24 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/signup': typeof AuthSignupRoute
   '/auth/': typeof AuthIndexRoute
-  '/app/clients': typeof AuthenticatedAppClientsRouteWithChildren
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/app/clients/$clientId': typeof AuthenticatedAppClientsClientIdRoute
   '/api/auth/meta/callback': typeof ApiAuthMetaCallbackRoute
+  '/app/clients/': typeof AuthenticatedAppClientsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/signup': typeof AuthSignupRoute
   '/auth': typeof AuthIndexRoute
-  '/app/clients': typeof AuthenticatedAppClientsRouteWithChildren
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/app/clients/$clientId': typeof AuthenticatedAppClientsClientIdRoute
   '/api/auth/meta/callback': typeof ApiAuthMetaCallbackRoute
+  '/app/clients': typeof AuthenticatedAppClientsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,12 +126,12 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/signup': typeof AuthSignupRoute
   '/auth/': typeof AuthIndexRoute
-  '/_authenticated/app/clients': typeof AuthenticatedAppClientsRouteWithChildren
   '/_authenticated/app/reports': typeof AuthenticatedAppReportsRoute
   '/_authenticated/app/settings': typeof AuthenticatedAppSettingsRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/clients/$clientId': typeof AuthenticatedAppClientsClientIdRoute
   '/api/auth/meta/callback': typeof ApiAuthMetaCallbackRoute
+  '/_authenticated/app/clients/': typeof AuthenticatedAppClientsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,24 +142,24 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/signup'
     | '/auth/'
-    | '/app/clients'
     | '/app/reports'
     | '/app/settings'
     | '/app/'
     | '/app/clients/$clientId'
     | '/api/auth/meta/callback'
+    | '/app/clients/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth/callback'
     | '/auth/signup'
     | '/auth'
-    | '/app/clients'
     | '/app/reports'
     | '/app/settings'
     | '/app'
     | '/app/clients/$clientId'
     | '/api/auth/meta/callback'
+    | '/app/clients'
   id:
     | '__root__'
     | '/'
@@ -168,12 +169,12 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/signup'
     | '/auth/'
-    | '/_authenticated/app/clients'
     | '/_authenticated/app/reports'
     | '/_authenticated/app/settings'
     | '/_authenticated/app/'
     | '/_authenticated/app/clients/$clientId'
     | '/api/auth/meta/callback'
+    | '/_authenticated/app/clients/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -255,11 +256,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppReportsRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
-    '/_authenticated/app/clients': {
-      id: '/_authenticated/app/clients'
+    '/_authenticated/app/clients/': {
+      id: '/_authenticated/app/clients/'
       path: '/clients'
-      fullPath: '/app/clients'
-      preLoaderRoute: typeof AuthenticatedAppClientsRouteImport
+      fullPath: '/app/clients/'
+      preLoaderRoute: typeof AuthenticatedAppClientsIndexRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
     '/api/auth/meta/callback': {
@@ -271,40 +272,28 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/app/clients/$clientId': {
       id: '/_authenticated/app/clients/$clientId'
-      path: '/$clientId'
+      path: '/clients/$clientId'
       fullPath: '/app/clients/$clientId'
       preLoaderRoute: typeof AuthenticatedAppClientsClientIdRouteImport
-      parentRoute: typeof AuthenticatedAppClientsRoute
+      parentRoute: typeof AuthenticatedAppRoute
     }
   }
 }
 
-interface AuthenticatedAppClientsRouteChildren {
-  AuthenticatedAppClientsClientIdRoute: typeof AuthenticatedAppClientsClientIdRoute
-}
-
-const AuthenticatedAppClientsRouteChildren: AuthenticatedAppClientsRouteChildren =
-  {
-    AuthenticatedAppClientsClientIdRoute: AuthenticatedAppClientsClientIdRoute,
-  }
-
-const AuthenticatedAppClientsRouteWithChildren =
-  AuthenticatedAppClientsRoute._addFileChildren(
-    AuthenticatedAppClientsRouteChildren,
-  )
-
 interface AuthenticatedAppRouteChildren {
-  AuthenticatedAppClientsRoute: typeof AuthenticatedAppClientsRouteWithChildren
   AuthenticatedAppReportsRoute: typeof AuthenticatedAppReportsRoute
   AuthenticatedAppSettingsRoute: typeof AuthenticatedAppSettingsRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
+  AuthenticatedAppClientsClientIdRoute: typeof AuthenticatedAppClientsClientIdRoute
+  AuthenticatedAppClientsIndexRoute: typeof AuthenticatedAppClientsIndexRoute
 }
 
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
-  AuthenticatedAppClientsRoute: AuthenticatedAppClientsRouteWithChildren,
   AuthenticatedAppReportsRoute: AuthenticatedAppReportsRoute,
   AuthenticatedAppSettingsRoute: AuthenticatedAppSettingsRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
+  AuthenticatedAppClientsClientIdRoute: AuthenticatedAppClientsClientIdRoute,
+  AuthenticatedAppClientsIndexRoute: AuthenticatedAppClientsIndexRoute,
 }
 
 const AuthenticatedAppRouteWithChildren =

@@ -18,7 +18,7 @@ const clientsQuery = queryOptions({
   },
 });
 
-export const Route = createFileRoute("/_authenticated/app/clients")({
+export const Route = createFileRoute("/_authenticated/app/clients/")({
   loader: ({ context }) => context.queryClient.ensureQueryData(clientsQuery),
   component: ClientsList,
 });
