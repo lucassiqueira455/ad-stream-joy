@@ -81,7 +81,10 @@ export const getClientMetrics = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z.object({
       clientId: z.string().uuid(),
-      datePreset: z.enum(["today", "yesterday", "last_7d", "last_14d", "last_30d", "last_90d", "this_month", "last_month"]).default("last_30d"),
+      datePreset: z.enum([
+        "today", "yesterday", "last_3d", "last_7d", "last_14d", "last_28d",
+        "last_30d", "last_90d", "this_month", "last_month",
+      ]).default("last_30d"),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
