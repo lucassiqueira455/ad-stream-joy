@@ -127,29 +127,51 @@ export const getClientMetrics = createServerFn({ method: "POST" })
     const withInsights = results.filter((r) => r.insights);
     let totals = null as null | Awaited<ReturnType<typeof fetchAdAccountInsights>>;
     if (withInsights.length > 0) {
-      const sum = withInsights.reduce(
-        (acc, r) => {
-          const i = r.insights!;
-          acc.spend += i.spend;
-          acc.impressions += i.impressions;
-          acc.clicks += i.clicks;
-          acc.reach += i.reach;
-          acc.conversions += i.conversions;
-          return acc;
-        },
-        { spend: 0, impressions: 0, clicks: 0, reach: 0, conversions: 0 },
-      );
+      const s = {
+        spend: 0, impressions: 0, reach: 0, clicks: 0, link_clicks: 0,
+        landing_page_views: 0, purchases: 0, leads: 0, purchase_value: 0,
+        add_to_cart: 0, initiate_checkout: 0,
+      };
+      for (const r of withInsights) {
+        const i = r.insights!;
+        s.spend += i.spend;
+        s.impressions += i.impressions;
+        s.reach += i.reach;
+        s.clicks += i.clicks;
+        s.link_clicks += i.link_clicks;
+        s.landing_page_views += i.landing_page_views;
+        s.purchases += i.purchases;
+        s.leads += i.leads;
+        s.purchase_value += i.purchase_value;
+        s.add_to_cart += i.add_to_cart;
+        s.initiate_checkout += i.initiate_checkout;
+      }
+      const results_ = Math.max(s.purchases, s.leads);
+      const conversions = s.purchases + s.leads;
       totals = {
-        spend: sum.spend,
-        impressions: sum.impressions,
-        clicks: sum.clicks,
-        ctr: sum.impressions > 0 ? (sum.clicks / sum.impressions) * 100 : 0,
-        cpc: sum.clicks > 0 ? sum.spend / sum.clicks : 0,
-        cpm: sum.impressions > 0 ? (sum.spend / sum.impressions) * 1000 : 0,
-        reach: sum.reach,
-        frequency: sum.reach > 0 ? sum.impressions / sum.reach : 0,
-        conversions: sum.conversions,
-        cost_per_conversion: sum.conversions > 0 ? sum.spend / sum.conversions : 0,
+        spend: s.spend,
+        impressions: s.impressions,
+        reach: s.reach,
+        frequency: s.reach > 0 ? s.impressions / s.reach : 0,
+        cpm: s.impressions > 0 ? (s.spend / s.impressions) * 1000 : 0,
+        clicks: s.clicks,
+        link_clicks: s.link_clicks,
+        cpc: s.clicks > 0 ? s.spend / s.clicks : 0,
+        cpc_link: s.link_clicks > 0 ? s.spend / s.link_clicks : 0,
+        ctr: s.impressions > 0 ? (s.clicks / s.impressions) * 100 : 0,
+        ctr_link: s.impressions > 0 ? (s.link_clicks / s.impressions) * 100 : 0,
+        landing_page_views: s.landing_page_views,
+        cost_per_landing_page_view: s.landing_page_views > 0 ? s.spend / s.landing_page_views : 0,
+        results: results_,
+        cost_per_result: results_ > 0 ? s.spend / results_ : 0,
+        leads: s.leads,
+        purchases: s.purchases,
+        purchase_value: s.purchase_value,
+        roas: s.spend > 0 ? s.purchase_value / s.spend : 0,
+        add_to_cart: s.add_to_cart,
+        initiate_checkout: s.initiate_checkout,
+        conversions,
+        cost_per_conversion: conversions > 0 ? s.spend / conversions : 0,
       };
     }
 
