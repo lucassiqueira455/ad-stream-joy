@@ -6,6 +6,7 @@ import {
   DollarSign,
   Eye,
   Loader2,
+  MessageCircle,
   MousePointerClick,
   Percent,
   RefreshCcw,
@@ -62,6 +63,7 @@ type MetricKey =
   | "results"
   | "cost_per_result"
   | "leads"
+  | "messaging_conversations"
   | "purchases"
   | "purchase_value"
   | "roas"
@@ -75,7 +77,7 @@ const METRICS: {
   label: string;
   icon: typeof DollarSign;
   format: MetricFormat;
-  group: "Entrega" | "Cliques" | "Resultados" | "Conversões";
+  group: "Entrega" | "Cliques" | "Conversões";
 }[] = [
   { key: "spend", label: "Valor gasto", icon: DollarSign, format: "currency", group: "Entrega" },
   { key: "impressions", label: "Impressões", icon: Eye, format: "number", group: "Entrega" },
@@ -90,9 +92,10 @@ const METRICS: {
   { key: "ctr", label: "CTR (todos)", icon: Percent, format: "percent", group: "Cliques" },
   { key: "landing_page_views", label: "Visualizações da LP", icon: Eye, format: "number", group: "Cliques" },
   { key: "cost_per_landing_page_view", label: "Custo por visualização da LP", icon: DollarSign, format: "currency", group: "Cliques" },
-  { key: "results", label: "Resultados", icon: Trophy, format: "number", group: "Resultados" },
-  { key: "cost_per_result", label: "Custo por resultado", icon: DollarSign, format: "currency", group: "Resultados" },
+  { key: "results", label: "Conversões", icon: Trophy, format: "number", group: "Conversões" },
+  { key: "cost_per_result", label: "Custo por conversão", icon: DollarSign, format: "currency", group: "Conversões" },
   { key: "leads", label: "Leads", icon: Target, format: "number", group: "Conversões" },
+  { key: "messaging_conversations", label: "Mensagens", icon: MessageCircle, format: "number", group: "Conversões" },
   { key: "purchases", label: "Compras", icon: ShoppingCart, format: "number", group: "Conversões" },
   { key: "purchase_value", label: "Valor de conversão", icon: DollarSign, format: "currency", group: "Conversões" },
   { key: "roas", label: "ROAS", icon: TrendingUp, format: "roas", group: "Conversões" },
@@ -103,7 +106,7 @@ const METRICS: {
 const DEFAULT_SELECTION: MetricKey[] = [
   "spend", "impressions", "reach", "cpm",
   "link_clicks", "cpc_link", "ctr_link",
-  "results", "cost_per_result",
+  "results", "cost_per_result", "leads", "messaging_conversations",
   "purchases", "purchase_value", "roas",
 ];
 
@@ -228,7 +231,7 @@ export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; has
                   onClick={() => setPickerOpen(false)}
                 />
                 <div className="absolute right-0 z-20 mt-2 max-h-[70vh] w-72 overflow-y-auto rounded-lg border border-border bg-card p-2 shadow-lg">
-                  {(["Entrega", "Cliques", "Resultados", "Conversões"] as const).map((group) => (
+                  {(["Entrega", "Cliques", "Conversões"] as const).map((group) => (
                     <div key={group} className="mb-2">
                       <p className="px-2 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                         {group}
