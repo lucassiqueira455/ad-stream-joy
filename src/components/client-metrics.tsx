@@ -122,6 +122,7 @@ function formatValue(value: number, format: string, currency: string | null): st
   }
   if (format === "percent") return `${value.toFixed(2)}%`;
   if (format === "decimal") return value.toFixed(2);
+  if (format === "roas") return `${value.toFixed(2)}x`;
   return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(value);
 }
 
