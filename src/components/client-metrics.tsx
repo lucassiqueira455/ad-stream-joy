@@ -227,28 +227,32 @@ export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; has
                   className="fixed inset-0 z-10"
                   onClick={() => setPickerOpen(false)}
                 />
-                <div className="absolute right-0 z-20 mt-2 w-64 rounded-lg border border-border bg-card p-2 shadow-lg">
-                  <p className="px-2 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Selecionar métricas
-                  </p>
-                  {METRICS.map((m) => {
-                    const on = selected.includes(m.key);
-                    return (
-                      <label
-                        key={m.key}
-                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={on}
-                          onChange={() => toggle(m.key)}
-                          className="h-4 w-4"
-                        />
-                        <m.icon className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span>{m.label}</span>
-                      </label>
-                    );
-                  })}
+                <div className="absolute right-0 z-20 mt-2 max-h-[70vh] w-72 overflow-y-auto rounded-lg border border-border bg-card p-2 shadow-lg">
+                  {(["Entrega", "Cliques", "Resultados", "Conversões"] as const).map((group) => (
+                    <div key={group} className="mb-2">
+                      <p className="px-2 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        {group}
+                      </p>
+                      {METRICS.filter((m) => m.group === group).map((m) => {
+                        const on = selected.includes(m.key);
+                        return (
+                          <label
+                            key={m.key}
+                            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={on}
+                              onChange={() => toggle(m.key)}
+                              className="h-4 w-4"
+                            />
+                            <m.icon className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>{m.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
               </>
             )}
