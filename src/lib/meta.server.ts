@@ -68,8 +68,8 @@ export async function fetchMetaMe(token: string): Promise<MetaMe> {
 }
 
 export interface MetaAdAccount {
-  id: string; // "act_123"
-  account_id: string; // "123"
+  id: string;
+  account_id: string;
   name: string;
   currency?: string;
   timezone_name?: string;
@@ -106,78 +106,200 @@ export function metaStatusLabel(status: number | undefined): string {
     case 9: return "in_grace_period";
     case 100: return "pending_closure";
     case 101: return "closed";
-    case 201: return "any_active";
-    case 202: return "any_closed";
     default: return "unknown";
   }
 }
 
+// ---- Insights ----
+
 export interface MetaInsights {
+  // core delivery
   spend: number;
   impressions: number;
-  clicks: number;
-  ctr: number;
-  cpc: number;
-  cpm: number;
   reach: number;
   frequency: number;
+  cpm: number;
+  // clicks
+  clicks: number; // all clicks
+  link_clicks: number; // inline_link_clicks
+  cpc: number; // cost per all clicks
+  cpc_link: number; // cost per link click
+  ctr: number; // all clicks
+  ctr_link: number; // link CTR
+  // landing
+  landing_page_views: number;
+  cost_per_landing_page_view: number;
+  // results (aggregated across common conversion action types)
+  results: number;
+  cost_per_result: number;
+  // conversions breakdown
+  leads: number;
+  purchases: number;
+  purchase_value: number;
+  roas: number;
+  add_to_cart: number;
+  initiate_checkout: number;
+  // legacy generic
   conversions: number;
   cost_per_conversion: number;
 }
 
+const EMPTY_INSIGHTS: MetaInsights = {
+  spend: 0, impressions: 0, reach: 0, frequency: 0, cpm: 0,
+  clicks: 0, link_clicks: 0, cpc: 0, cpc_link: 0, ctr: 0, ctr_link: 0,
+  landing_page_views: 0, cost_per_landing_page_view: 0,
+  results: 0, cost_per_result: 0,
+  leads: 0, purchases: 0, purchase_value: 0, roas: 0,
+  add_to_cart: 0, initiate_checkout: 0,
+  conversions: 0, cost_per_conversion: 0,
+};
+
+const PURCHASE_TYPES = [
+  "purchase",
+  "offsite_conversion.fb_pixel_purchase",
+  "onsite_conversion.purchase",
+  "omni_purchase",
+  "web_in_store_purchase",
+];
+const LEAD_TYPES = [
+  "lead",
+  "offsite_conversion.fb_pixel_lead",
+  "onsite_conversion.lead_grouped",
+  "onsite_web_lead",
+  "onsite_web_app_lead",
+];
+const ATC_TYPES = [
+  "add_to_cart",
+  "offsite_conversion.fb_pixel_add_to_cart",
+  "onsite_conversion.add_to_cart",
+  "omni_add_to_cart",
+];
+const IC_TYPES = [
+  "initiate_checkout",
+  "offsite_conversion.fb_pixel_initiate_checkout",
+  "onsite_conversion.initiate_checkout",
+  "omni_initiated_checkout",
+];
+const LPV_TYPES = ["landing_page_view", "omni_landing_page_view"];
+
+function sumActions(
+  actions: Array<{ action_type: string; value: string }> | undefined,
+  types: string[],
+): number {
+  if (!actions) return 0;
+  return actions
+    .filter((a) => types.includes(a.action_type))
+    .reduce((s, a) => s + Number(a.value || 0), 0);
+}
+
 export async function fetchAdAccountInsights(params: {
   token: string;
-  externalAccountId: string; // numeric, without "act_"
+  externalAccountId: string;
   datePreset?: string;
 }): Promise<MetaInsights> {
   const { token, externalAccountId, datePreset = "last_30d" } = params;
   const url = new URL(`${GRAPH}/act_${externalAccountId}/insights`);
   url.searchParams.set(
     "fields",
-    "spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions",
+    [
+      "spend",
+      "impressions",
+      "reach",
+      "frequency",
+      "cpm",
+      "clicks",
+      "inline_link_clicks",
+      "cpc",
+      "cost_per_inline_link_click",
+      "ctr",
+      "inline_link_click_ctr",
+      "actions",
+      "action_values",
+      "cost_per_action_type",
+      "purchase_roas",
+    ].join(","),
   );
   url.searchParams.set("date_preset", datePreset);
+  // Match Ads Manager default attribution window
+  url.searchParams.set("action_attribution_windows", JSON.stringify(["7d_click", "1d_view"]));
+  url.searchParams.set("use_unified_attribution_setting", "true");
+  url.searchParams.set("level", "account");
   url.searchParams.set("access_token", token);
+
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`Meta insights failed: ${await res.text()}`);
   const json = (await res.json()) as {
     data?: Array<{
       spend?: string;
       impressions?: string;
-      clicks?: string;
-      ctr?: string;
-      cpc?: string;
-      cpm?: string;
       reach?: string;
       frequency?: string;
+      cpm?: string;
+      clicks?: string;
+      inline_link_clicks?: string;
+      cpc?: string;
+      cost_per_inline_link_click?: string;
+      ctr?: string;
+      inline_link_click_ctr?: string;
       actions?: Array<{ action_type: string; value: string }>;
+      action_values?: Array<{ action_type: string; value: string }>;
+      cost_per_action_type?: Array<{ action_type: string; value: string }>;
+      purchase_roas?: Array<{ action_type: string; value: string }>;
     }>;
   };
   const row = json.data?.[0];
-  if (!row) {
-    return {
-      spend: 0, impressions: 0, clicks: 0, ctr: 0, cpc: 0, cpm: 0,
-      reach: 0, frequency: 0, conversions: 0, cost_per_conversion: 0,
-    };
-  }
+  if (!row) return { ...EMPTY_INSIGHTS };
+
   const num = (v: string | undefined) => (v ? Number(v) : 0);
-  const conversions = (row.actions ?? [])
-    .filter((a) =>
-      ["purchase", "offsite_conversion.fb_pixel_purchase", "onsite_conversion.purchase", "lead", "complete_registration"].includes(a.action_type),
-    )
-    .reduce((sum, a) => sum + Number(a.value || 0), 0);
   const spend = num(row.spend);
+  const impressions = num(row.impressions);
+  const reach = num(row.reach);
+  const clicks = num(row.clicks);
+  const link_clicks = num(row.inline_link_clicks);
+
+  const purchases = sumActions(row.actions, PURCHASE_TYPES);
+  const leads = sumActions(row.actions, LEAD_TYPES);
+  const add_to_cart = sumActions(row.actions, ATC_TYPES);
+  const initiate_checkout = sumActions(row.actions, IC_TYPES);
+  const landing_page_views = sumActions(row.actions, LPV_TYPES);
+  const purchase_value = sumActions(row.action_values, PURCHASE_TYPES);
+
+  // "results" ≈ dominant conversion outcome. Use the max of the main
+  // conversion outcomes so we report the same figure Ads Manager shows
+  // when the objective is Leads / Purchases / etc.
+  const results = Math.max(purchases, leads);
+  const conversions = purchases + leads;
+
+  const roasEntry = row.purchase_roas?.find((r) => r.action_type === "omni_purchase")
+    ?? row.purchase_roas?.[0];
+  const roas = roasEntry ? Number(roasEntry.value || 0) : (spend > 0 ? purchase_value / spend : 0);
+
+  const cost_per_landing_page_view = landing_page_views > 0 ? spend / landing_page_views : 0;
+  const cost_per_result = results > 0 ? spend / results : 0;
+
   return {
     spend,
-    impressions: num(row.impressions),
-    clicks: num(row.clicks),
-    ctr: num(row.ctr),
-    cpc: num(row.cpc),
-    cpm: num(row.cpm),
-    reach: num(row.reach),
+    impressions,
+    reach,
     frequency: num(row.frequency),
+    cpm: num(row.cpm),
+    clicks,
+    link_clicks,
+    cpc: num(row.cpc),
+    cpc_link: num(row.cost_per_inline_link_click),
+    ctr: num(row.ctr),
+    ctr_link: num(row.inline_link_click_ctr),
+    landing_page_views,
+    cost_per_landing_page_view,
+    results,
+    cost_per_result,
+    leads,
+    purchases,
+    purchase_value,
+    roas,
+    add_to_cart,
+    initiate_checkout,
     conversions,
     cost_per_conversion: conversions > 0 ? spend / conversions : 0,
   };
 }
-
