@@ -10,8 +10,10 @@ import {
   Percent,
   RefreshCcw,
   Settings2,
+  ShoppingCart,
   Target,
   TrendingUp,
+  Trophy,
   Users,
   Zap,
 } from "lucide-react";
@@ -21,8 +23,10 @@ import { MetricCard } from "@/components/metric-card";
 type DatePreset =
   | "today"
   | "yesterday"
+  | "last_3d"
   | "last_7d"
   | "last_14d"
+  | "last_28d"
   | "last_30d"
   | "last_90d"
   | "this_month"
@@ -31,8 +35,10 @@ type DatePreset =
 const DATE_OPTIONS: { value: DatePreset; label: string }[] = [
   { value: "today", label: "Hoje" },
   { value: "yesterday", label: "Ontem" },
+  { value: "last_3d", label: "Últimos 3 dias" },
   { value: "last_7d", label: "Últimos 7 dias" },
   { value: "last_14d", label: "Últimos 14 dias" },
+  { value: "last_28d", label: "Últimos 28 dias" },
   { value: "last_30d", label: "Últimos 30 dias" },
   { value: "last_90d", label: "Últimos 90 dias" },
   { value: "this_month", label: "Este mês" },
@@ -42,34 +48,64 @@ const DATE_OPTIONS: { value: DatePreset; label: string }[] = [
 type MetricKey =
   | "spend"
   | "impressions"
-  | "clicks"
-  | "ctr"
-  | "cpc"
-  | "cpm"
   | "reach"
   | "frequency"
-  | "conversions"
-  | "cost_per_conversion";
+  | "cpm"
+  | "link_clicks"
+  | "cpc_link"
+  | "ctr_link"
+  | "clicks"
+  | "cpc"
+  | "ctr"
+  | "landing_page_views"
+  | "cost_per_landing_page_view"
+  | "results"
+  | "cost_per_result"
+  | "leads"
+  | "purchases"
+  | "purchase_value"
+  | "roas"
+  | "add_to_cart"
+  | "initiate_checkout";
+
+type MetricFormat = "currency" | "number" | "percent" | "decimal" | "roas";
 
 const METRICS: {
   key: MetricKey;
   label: string;
   icon: typeof DollarSign;
-  format: "currency" | "number" | "percent" | "decimal";
+  format: MetricFormat;
+  group: "Entrega" | "Cliques" | "Resultados" | "Conversões";
 }[] = [
-  { key: "spend", label: "Investimento", icon: DollarSign, format: "currency" },
-  { key: "impressions", label: "Impressões", icon: Eye, format: "number" },
-  { key: "clicks", label: "Cliques", icon: MousePointerClick, format: "number" },
-  { key: "ctr", label: "CTR", icon: Percent, format: "percent" },
-  { key: "cpc", label: "CPC", icon: TrendingUp, format: "currency" },
-  { key: "cpm", label: "CPM", icon: BarChart3, format: "currency" },
-  { key: "reach", label: "Alcance", icon: Users, format: "number" },
-  { key: "frequency", label: "Frequência", icon: Zap, format: "decimal" },
-  { key: "conversions", label: "Conversões", icon: Target, format: "number" },
-  { key: "cost_per_conversion", label: "Custo/Conversão", icon: DollarSign, format: "currency" },
+  { key: "spend", label: "Valor gasto", icon: DollarSign, format: "currency", group: "Entrega" },
+  { key: "impressions", label: "Impressões", icon: Eye, format: "number", group: "Entrega" },
+  { key: "reach", label: "Alcance", icon: Users, format: "number", group: "Entrega" },
+  { key: "frequency", label: "Frequência", icon: Zap, format: "decimal", group: "Entrega" },
+  { key: "cpm", label: "CPM", icon: BarChart3, format: "currency", group: "Entrega" },
+  { key: "link_clicks", label: "Cliques no link", icon: MousePointerClick, format: "number", group: "Cliques" },
+  { key: "cpc_link", label: "CPC (link)", icon: TrendingUp, format: "currency", group: "Cliques" },
+  { key: "ctr_link", label: "CTR (link)", icon: Percent, format: "percent", group: "Cliques" },
+  { key: "clicks", label: "Cliques (todos)", icon: MousePointerClick, format: "number", group: "Cliques" },
+  { key: "cpc", label: "CPC (todos)", icon: TrendingUp, format: "currency", group: "Cliques" },
+  { key: "ctr", label: "CTR (todos)", icon: Percent, format: "percent", group: "Cliques" },
+  { key: "landing_page_views", label: "Visualizações da LP", icon: Eye, format: "number", group: "Cliques" },
+  { key: "cost_per_landing_page_view", label: "Custo por visualização da LP", icon: DollarSign, format: "currency", group: "Cliques" },
+  { key: "results", label: "Resultados", icon: Trophy, format: "number", group: "Resultados" },
+  { key: "cost_per_result", label: "Custo por resultado", icon: DollarSign, format: "currency", group: "Resultados" },
+  { key: "leads", label: "Leads", icon: Target, format: "number", group: "Conversões" },
+  { key: "purchases", label: "Compras", icon: ShoppingCart, format: "number", group: "Conversões" },
+  { key: "purchase_value", label: "Valor de conversão", icon: DollarSign, format: "currency", group: "Conversões" },
+  { key: "roas", label: "ROAS", icon: TrendingUp, format: "roas", group: "Conversões" },
+  { key: "add_to_cart", label: "Adições ao carrinho", icon: ShoppingCart, format: "number", group: "Conversões" },
+  { key: "initiate_checkout", label: "Checkouts iniciados", icon: ShoppingCart, format: "number", group: "Conversões" },
 ];
 
-const DEFAULT_SELECTION: MetricKey[] = ["spend", "impressions", "clicks", "ctr", "cpc", "conversions"];
+const DEFAULT_SELECTION: MetricKey[] = [
+  "spend", "impressions", "reach", "cpm",
+  "link_clicks", "cpc_link", "ctr_link",
+  "results", "cost_per_result",
+  "purchases", "purchase_value", "roas",
+];
 
 function formatValue(value: number, format: string, currency: string | null): string {
   if (!Number.isFinite(value)) return "—";
