@@ -132,7 +132,8 @@ export const getClientMetrics = createServerFn({ method: "POST" })
     if (withInsights.length > 0) {
       const s = {
         spend: 0, impressions: 0, reach: 0, clicks: 0, link_clicks: 0,
-        landing_page_views: 0, purchases: 0, leads: 0, purchase_value: 0,
+        landing_page_views: 0, purchases: 0, leads: 0, messaging_conversations: 0,
+        conversions: 0, purchase_value: 0,
         add_to_cart: 0, initiate_checkout: 0,
       };
       for (const r of withInsights) {
@@ -145,12 +146,14 @@ export const getClientMetrics = createServerFn({ method: "POST" })
         s.landing_page_views += i.landing_page_views;
         s.purchases += i.purchases;
         s.leads += i.leads;
+        s.messaging_conversations += i.messaging_conversations;
+        s.conversions += i.conversions;
         s.purchase_value += i.purchase_value;
         s.add_to_cart += i.add_to_cart;
         s.initiate_checkout += i.initiate_checkout;
       }
-      const results_ = Math.max(s.purchases, s.leads);
-      const conversions = s.purchases + s.leads;
+      const conversions = s.conversions;
+      const results_ = conversions;
       totals = {
         spend: s.spend,
         impressions: s.impressions,
@@ -168,6 +171,7 @@ export const getClientMetrics = createServerFn({ method: "POST" })
         results: results_,
         cost_per_result: results_ > 0 ? s.spend / results_ : 0,
         leads: s.leads,
+        messaging_conversations: s.messaging_conversations,
         purchases: s.purchases,
         purchase_value: s.purchase_value,
         roas: s.spend > 0 ? s.purchase_value / s.spend : 0,

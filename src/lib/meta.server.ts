@@ -129,11 +129,12 @@ export interface MetaInsights {
   // landing
   landing_page_views: number;
   cost_per_landing_page_view: number;
-  // results (aggregated across common conversion action types)
+  // conversions/results (forms, messages, purchases and other conversion events)
   results: number;
   cost_per_result: number;
   // conversions breakdown
   leads: number;
+  messaging_conversations: number;
   purchases: number;
   purchase_value: number;
   roas: number;
@@ -149,7 +150,7 @@ const EMPTY_INSIGHTS: MetaInsights = {
   clicks: 0, link_clicks: 0, cpc: 0, cpc_link: 0, ctr: 0, ctr_link: 0,
   landing_page_views: 0, cost_per_landing_page_view: 0,
   results: 0, cost_per_result: 0,
-  leads: 0, purchases: 0, purchase_value: 0, roas: 0,
+  leads: 0, messaging_conversations: 0, purchases: 0, purchase_value: 0, roas: 0,
   add_to_cart: 0, initiate_checkout: 0,
   conversions: 0, cost_per_conversion: 0,
 };
@@ -163,10 +164,24 @@ const PURCHASE_TYPES = [
 ];
 const LEAD_TYPES = [
   "lead",
+  "omni_lead",
+  "leadgen_grouped",
   "offsite_conversion.fb_pixel_lead",
+  "onsite_conversion.lead",
   "onsite_conversion.lead_grouped",
   "onsite_web_lead",
   "onsite_web_app_lead",
+];
+const MESSAGE_CONVERSATION_TYPES = [
+  "onsite_conversion.messaging_conversation_started_7d",
+  "onsite_conversion.messaging_conversation_started_1d",
+  "messaging_conversation_started_7d",
+  "messaging_conversation_started",
+  "onsite_conversion.total_messaging_connection",
+];
+const MESSAGE_REPLY_TYPES = [
+  "onsite_conversion.messaging_first_reply",
+  "messaging_first_reply",
 ];
 const ATC_TYPES = [
   "add_to_cart",
@@ -181,6 +196,28 @@ const IC_TYPES = [
   "omni_initiated_checkout",
 ];
 const LPV_TYPES = ["landing_page_view", "omni_landing_page_view"];
+const OTHER_CONVERSION_TYPES = [
+  "contact",
+  "omni_contact",
+  "offsite_conversion.fb_pixel_contact",
+  "onsite_conversion.contact",
+  "complete_registration",
+  "omni_complete_registration",
+  "offsite_conversion.fb_pixel_complete_registration",
+  "onsite_conversion.complete_registration",
+  "subscribe",
+  "omni_subscribe",
+  "offsite_conversion.fb_pixel_subscribe",
+  "start_trial",
+  "omni_start_trial",
+  "offsite_conversion.fb_pixel_start_trial",
+  "schedule",
+  "omni_schedule",
+  "offsite_conversion.fb_pixel_schedule",
+  "submit_application",
+  "omni_submit_application",
+  "offsite_conversion.fb_pixel_submit_application",
+];
 
 function sumActions(
   actions: Array<{ action_type: string; value: string }> | undefined,
@@ -190,6 +227,16 @@ function sumActions(
   return actions
     .filter((a) => types.includes(a.action_type))
     .reduce((s, a) => s + Number(a.value || 0), 0);
+}
+
+function sumMessagingConversations(
+  actions: Array<{ action_type: string; value: string }> | undefined,
+): number {
+  const conversations = sumActions(actions, MESSAGE_CONVERSATION_TYPES);
+  const replies = sumActions(actions, MESSAGE_REPLY_TYPES);
+  // Meta can expose both for message campaigns. Use the larger signal so the
+  // same conversation is not counted twice.
+  return Math.max(conversations, replies);
 }
 
 export async function fetchAdAccountInsights(params: {
@@ -259,16 +306,18 @@ export async function fetchAdAccountInsights(params: {
 
   const purchases = sumActions(row.actions, PURCHASE_TYPES);
   const leads = sumActions(row.actions, LEAD_TYPES);
+  const messaging_conversations = sumMessagingConversations(row.actions);
   const add_to_cart = sumActions(row.actions, ATC_TYPES);
   const initiate_checkout = sumActions(row.actions, IC_TYPES);
   const landing_page_views = sumActions(row.actions, LPV_TYPES);
   const purchase_value = sumActions(row.action_values, PURCHASE_TYPES);
+  const other_conversions = sumActions(row.actions, OTHER_CONVERSION_TYPES);
 
-  // "results" ≈ dominant conversion outcome. Use the max of the main
-  // conversion outcomes so we report the same figure Ads Manager shows
-  // when the objective is Leads / Purchases / etc.
-  const results = Math.max(purchases, leads);
-  const conversions = purchases + leads;
+  // Treat "Conversões" as every final conversion outcome we can read from
+  // Meta: forms/leads, messaging conversations, purchases and other standard
+  // conversion events. Cart/checkout stay available as separate funnel metrics.
+  const conversions = leads + messaging_conversations + purchases + other_conversions;
+  const results = conversions;
 
   const roasEntry = row.purchase_roas?.find((r) => r.action_type === "omni_purchase")
     ?? row.purchase_roas?.[0];
@@ -294,6 +343,7 @@ export async function fetchAdAccountInsights(params: {
     results,
     cost_per_result,
     leads,
+    messaging_conversations,
     purchases,
     purchase_value,
     roas,
