@@ -181,7 +181,6 @@ const MESSAGE_CONVERSATION_TYPES = [
   "onsite_conversion.messaging_conversation_started_1d",
   "messaging_conversation_started_7d",
   "messaging_conversation_started",
-  "onsite_conversion.total_messaging_connection",
 ];
 const MESSAGE_REPLY_TYPES = [
   "onsite_conversion.messaging_first_reply",
