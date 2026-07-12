@@ -133,9 +133,10 @@ export const getClientMetrics = createServerFn({ method: "POST" })
       const s = {
         spend: 0, impressions: 0, reach: 0, clicks: 0, link_clicks: 0,
         landing_page_views: 0, purchases: 0, leads: 0, messaging_conversations: 0,
-        conversions: 0, purchase_value: 0,
+        purchase_value: 0,
         add_to_cart: 0, initiate_checkout: 0,
       };
+      const breakdown: Record<string, number> = {};
       for (const r of withInsights) {
         const i = r.insights!;
         s.spend += i.spend;
@@ -147,13 +148,14 @@ export const getClientMetrics = createServerFn({ method: "POST" })
         s.purchases += i.purchases;
         s.leads += i.leads;
         s.messaging_conversations += i.messaging_conversations;
-        s.conversions += i.conversions;
         s.purchase_value += i.purchase_value;
         s.add_to_cart += i.add_to_cart;
         s.initiate_checkout += i.initiate_checkout;
+        for (const [k, v] of Object.entries(i.conversions_breakdown)) {
+          breakdown[k] = (breakdown[k] ?? 0) + v;
+        }
       }
-      const conversions = s.conversions;
-      const results_ = conversions;
+      const conversions = Object.values(breakdown).reduce((sum, v) => sum + v, 0);
       totals = {
         spend: s.spend,
         impressions: s.impressions,
@@ -168,8 +170,8 @@ export const getClientMetrics = createServerFn({ method: "POST" })
         ctr_link: s.impressions > 0 ? (s.link_clicks / s.impressions) * 100 : 0,
         landing_page_views: s.landing_page_views,
         cost_per_landing_page_view: s.landing_page_views > 0 ? s.spend / s.landing_page_views : 0,
-        results: results_,
-        cost_per_result: results_ > 0 ? s.spend / results_ : 0,
+        results: conversions,
+        cost_per_result: conversions > 0 ? s.spend / conversions : 0,
         leads: s.leads,
         messaging_conversations: s.messaging_conversations,
         purchases: s.purchases,
@@ -179,8 +181,10 @@ export const getClientMetrics = createServerFn({ method: "POST" })
         initiate_checkout: s.initiate_checkout,
         conversions,
         cost_per_conversion: conversions > 0 ? s.spend / conversions : 0,
+        conversions_breakdown: breakdown,
       };
     }
+
 
     return {
       accounts: results,
