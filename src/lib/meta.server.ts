@@ -143,6 +143,8 @@ export interface MetaInsights {
   // legacy generic
   conversions: number;
   cost_per_conversion: number;
+  // detailed breakdown of conversions by category (Formulários, WhatsApp, ...)
+  conversions_breakdown: Record<string, number>;
 }
 
 const EMPTY_INSIGHTS: MetaInsights = {
@@ -153,7 +155,9 @@ const EMPTY_INSIGHTS: MetaInsights = {
   leads: 0, messaging_conversations: 0, purchases: 0, purchase_value: 0, roas: 0,
   add_to_cart: 0, initiate_checkout: 0,
   conversions: 0, cost_per_conversion: 0,
+  conversions_breakdown: {},
 };
+
 
 const PURCHASE_TYPES = [
   "purchase",
@@ -239,6 +243,45 @@ function sumMessagingConversations(
   return Math.max(conversations, replies);
 }
 
+// Categorize an action_type into a human-readable conversion bucket.
+// Returns null if the action is not a "final" conversion (excludes ATC/IC/LPV/clicks/views).
+function categorizeConversion(actionType: string): string | null {
+  const t = actionType.toLowerCase();
+  if (LEAD_TYPES.includes(actionType)) return "Formulários";
+  if (PURCHASE_TYPES.includes(actionType)) return "Compras";
+  if (t.includes("whatsapp")) return "WhatsApp";
+  if (t.includes("messenger")) return "Messenger";
+  if (t.includes("instagram")) return "Instagram Direct";
+  if (MESSAGE_CONVERSATION_TYPES.includes(actionType)) return "Mensagens";
+  // ignore first_reply to avoid duplication with conversation_started
+  if (MESSAGE_REPLY_TYPES.includes(actionType)) return null;
+  if (t.includes("call") || t.includes("phone")) return "Ligações";
+  if (t.includes("complete_registration")) return "Cadastros";
+  if (t.includes("subscribe")) return "Assinaturas";
+  if (t.includes("contact")) return "Contatos";
+  if (t.includes("schedule")) return "Agendamentos";
+  if (t.includes("submit_application")) return "Candidaturas";
+  if (t.includes("start_trial")) return "Trials";
+  return null;
+}
+
+function buildConversionsBreakdown(
+  actions: Array<{ action_type: string; value: string }> | undefined,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!actions) return out;
+  // Dedup messaging: if any conversation_started type has a value, skip first_reply entirely (handled by categorize returning null).
+  for (const a of actions) {
+    const bucket = categorizeConversion(a.action_type);
+    if (!bucket) continue;
+    const v = Number(a.value || 0);
+    if (!v) continue;
+    out[bucket] = (out[bucket] ?? 0) + v;
+  }
+  return out;
+}
+
+
 export async function fetchAdAccountInsights(params: {
   token: string;
   externalAccountId: string;
@@ -311,12 +354,11 @@ export async function fetchAdAccountInsights(params: {
   const initiate_checkout = sumActions(row.actions, IC_TYPES);
   const landing_page_views = sumActions(row.actions, LPV_TYPES);
   const purchase_value = sumActions(row.action_values, PURCHASE_TYPES);
-  const other_conversions = sumActions(row.actions, OTHER_CONVERSION_TYPES);
 
-  // Treat "Conversões" as every final conversion outcome we can read from
-  // Meta: forms/leads, messaging conversations, purchases and other standard
-  // conversion events. Cart/checkout stay available as separate funnel metrics.
-  const conversions = leads + messaging_conversations + purchases + other_conversions;
+  // Detailed breakdown by conversion category (auto-detected from Meta actions).
+  const conversions_breakdown = buildConversionsBreakdown(row.actions);
+  // Total conversions = sum of every final-conversion bucket (no duplication).
+  const conversions = Object.values(conversions_breakdown).reduce((s, v) => s + v, 0);
   const results = conversions;
 
   const roasEntry = row.purchase_roas?.find((r) => r.action_type === "omni_purchase")
@@ -351,5 +393,7 @@ export async function fetchAdAccountInsights(params: {
     initiate_checkout,
     conversions,
     cost_per_conversion: conversions > 0 ? spend / conversions : 0,
+    conversions_breakdown,
   };
 }
+
