@@ -181,7 +181,6 @@ const MESSAGE_CONVERSATION_TYPES = [
   "onsite_conversion.messaging_conversation_started_1d",
   "messaging_conversation_started_7d",
   "messaging_conversation_started",
-  "onsite_conversion.total_messaging_connection",
 ];
 const MESSAGE_REPLY_TYPES = [
   "onsite_conversion.messaging_first_reply",
@@ -223,18 +222,27 @@ const OTHER_CONVERSION_TYPES = [
   "offsite_conversion.fb_pixel_submit_application",
 ];
 
+type MetaActionStat = { action_type: string; value?: string } & Record<string, string | undefined>;
+
+function actionValue(action: MetaActionStat): number {
+  if (action.value !== undefined) return Number(action.value || 0);
+  // Some Insights responses return attribution-window columns instead of
+  // `value`. In that case, add the requested click/view windows only.
+  return ["7d_click", "1d_view"].reduce((sum, key) => sum + Number(action[key] || 0), 0);
+}
+
 function sumActions(
-  actions: Array<{ action_type: string; value: string }> | undefined,
+  actions: MetaActionStat[] | undefined,
   types: string[],
 ): number {
   if (!actions) return 0;
   return actions
     .filter((a) => types.includes(a.action_type))
-    .reduce((s, a) => s + Number(a.value || 0), 0);
+    .reduce((s, a) => s + actionValue(a), 0);
 }
 
 function sumMessagingConversations(
-  actions: Array<{ action_type: string; value: string }> | undefined,
+  actions: MetaActionStat[] | undefined,
 ): number {
   const conversations = sumActions(actions, MESSAGE_CONVERSATION_TYPES);
   const replies = sumActions(actions, MESSAGE_REPLY_TYPES);
@@ -243,40 +251,133 @@ function sumMessagingConversations(
   return Math.max(conversations, replies);
 }
 
-// Categorize an action_type into a human-readable conversion bucket.
-// Returns null if the action is not a "final" conversion (excludes ATC/IC/LPV/clicks/views).
-function categorizeConversion(actionType: string): string | null {
+type ConversionClassification = {
+  family: string;
+  bucket: string;
+  aggregate: boolean;
+};
+
+// Classify only final conversion events that Ads Manager commonly treats as
+// result events. Generic pixel/custom conversion rows are intentionally ignored
+// here because they often overlap with lead/purchase/message rows or represent
+// non-final website events, which inflates the unified conversion total.
+function classifyConversion(actionType: string): ConversionClassification | null {
   const t = actionType.toLowerCase();
-  if (LEAD_TYPES.includes(actionType)) return "Formulários";
-  if (PURCHASE_TYPES.includes(actionType)) return "Compras";
-  if (t.includes("whatsapp")) return "WhatsApp";
-  if (t.includes("messenger")) return "Messenger";
-  if (t.includes("instagram")) return "Instagram Direct";
-  if (MESSAGE_CONVERSATION_TYPES.includes(actionType)) return "Mensagens";
-  // ignore first_reply to avoid duplication with conversation_started
-  if (MESSAGE_REPLY_TYPES.includes(actionType)) return null;
-  if (t.includes("call") || t.includes("phone")) return "Ligações";
-  if (t.includes("complete_registration")) return "Cadastros";
-  if (t.includes("subscribe")) return "Assinaturas";
-  if (t.includes("contact")) return "Contatos";
-  if (t.includes("schedule")) return "Agendamentos";
-  if (t.includes("submit_application")) return "Candidaturas";
-  if (t.includes("start_trial")) return "Trials";
+  const excluded = [
+    "link_click",
+    "landing_page_view",
+    "post_engagement",
+    "page_engagement",
+    "video_view",
+    "view_content",
+    "add_to_cart",
+    "initiate_checkout",
+    "search",
+  ];
+  if (excluded.some((term) => t.includes(term))) return null;
+
+  if (t.includes("lead")) {
+    const isAggregate = actionType === "lead" || actionType === "omni_lead";
+    const isForm = t.includes("leadgen") || t.includes("lead_grouped") || t.includes("onsite_conversion.lead");
+    return {
+      family: "lead",
+      bucket: isAggregate ? "Leads" : isForm ? "Formulários" : "Leads do site",
+      aggregate: isAggregate,
+    };
+  }
+
+  if (PURCHASE_TYPES.includes(actionType) || t.includes("purchase")) {
+    return {
+      family: "purchase",
+      bucket: "Compras",
+      aggregate: actionType === "purchase" || actionType === "omni_purchase",
+    };
+  }
+
+  if (
+    MESSAGE_CONVERSATION_TYPES.includes(actionType)
+    || MESSAGE_REPLY_TYPES.includes(actionType)
+    || t.includes("messaging_conversation_started")
+    || t.includes("messaging_first_reply")
+  ) {
+    const bucket = t.includes("whatsapp")
+      ? "WhatsApp"
+      : t.includes("messenger")
+        ? "Messenger"
+        : t.includes("instagram")
+          ? "Instagram Direct"
+          : "Mensagens";
+    return { family: `messaging:${bucket}`, bucket, aggregate: false };
+  }
+
+  const known: Array<[string, string, string]> = [
+    ["contact", "contact", "Contatos"],
+    ["complete_registration", "complete_registration", "Cadastros"],
+    ["subscribe", "subscribe", "Assinaturas"],
+    ["start_trial", "start_trial", "Trials"],
+    ["schedule", "schedule", "Agendamentos"],
+    ["submit_application", "submit_application", "Candidaturas"],
+    ["book", "booking", "Agendamentos"],
+    ["appointment", "appointment", "Agendamentos"],
+    ["call", "call", "Ligações"],
+    ["phone", "call", "Ligações"],
+    ["app_install", "app_install", "Instalações de app"],
+  ];
+  for (const [term, family, bucket] of known) {
+    if (t.includes(term)) {
+      return {
+        family,
+        bucket,
+        aggregate: actionType === family || actionType === `omni_${family}`,
+      };
+    }
+  }
+
   return null;
 }
 
 function buildConversionsBreakdown(
-  actions: Array<{ action_type: string; value: string }> | undefined,
+  actions: MetaActionStat[] | undefined,
+  conversions: MetaActionStat[] | undefined,
 ): Record<string, number> {
-  const out: Record<string, number> = {};
-  if (!actions) return out;
-  // Dedup messaging: if any conversation_started type has a value, skip first_reply entirely (handled by categorize returning null).
-  for (const a of actions) {
-    const bucket = categorizeConversion(a.action_type);
-    if (!bucket) continue;
-    const v = Number(a.value || 0);
+  type Group = {
+    aggregateMax: number;
+    aggregateBucket: string | null;
+    sourceMaxByBucket: Record<string, number>;
+  };
+  const groups: Record<string, Group> = {};
+
+  for (const a of [...(actions ?? []), ...(conversions ?? [])]) {
+    const classification = classifyConversion(a.action_type);
+    if (!classification) continue;
+    const v = actionValue(a);
     if (!v) continue;
-    out[bucket] = (out[bucket] ?? 0) + v;
+    const group = groups[classification.family] ?? {
+      aggregateMax: 0,
+      aggregateBucket: null,
+      sourceMaxByBucket: {},
+    };
+    if (classification.aggregate) {
+      group.aggregateMax = Math.max(group.aggregateMax, v);
+      group.aggregateBucket = classification.bucket;
+    } else {
+      group.sourceMaxByBucket[classification.bucket] = Math.max(
+        group.sourceMaxByBucket[classification.bucket] ?? 0,
+        v,
+      );
+    }
+    groups[classification.family] = group;
+  }
+
+  const out: Record<string, number> = {};
+  for (const group of Object.values(groups)) {
+    if (group.aggregateMax > 0 && group.aggregateBucket) {
+      out[group.aggregateBucket] = (out[group.aggregateBucket] ?? 0) + group.aggregateMax;
+      continue;
+    }
+    for (const [bucket, value] of Object.entries(group.sourceMaxByBucket)) {
+      out[bucket] = (out[bucket] ?? 0) + value;
+    }
   }
   return out;
 }
@@ -304,14 +405,16 @@ export async function fetchAdAccountInsights(params: {
       "ctr",
       "inline_link_click_ctr",
       "actions",
+      "conversions",
       "action_values",
+      "conversion_values",
       "cost_per_action_type",
+      "cost_per_conversion",
       "purchase_roas",
     ].join(","),
   );
   url.searchParams.set("date_preset", datePreset);
-  // Match Ads Manager default attribution window
-  url.searchParams.set("action_attribution_windows", JSON.stringify(["7d_click", "1d_view"]));
+  // Match Ads Manager attribution at campaign/ad-set level when configured.
   url.searchParams.set("use_unified_attribution_setting", "true");
   url.searchParams.set("level", "account");
   url.searchParams.set("access_token", token);
@@ -331,10 +434,13 @@ export async function fetchAdAccountInsights(params: {
       cost_per_inline_link_click?: string;
       ctr?: string;
       inline_link_click_ctr?: string;
-      actions?: Array<{ action_type: string; value: string }>;
-      action_values?: Array<{ action_type: string; value: string }>;
-      cost_per_action_type?: Array<{ action_type: string; value: string }>;
-      purchase_roas?: Array<{ action_type: string; value: string }>;
+      actions?: MetaActionStat[];
+      conversions?: MetaActionStat[];
+      action_values?: MetaActionStat[];
+      conversion_values?: MetaActionStat[];
+      cost_per_action_type?: MetaActionStat[];
+      cost_per_conversion?: MetaActionStat[];
+      purchase_roas?: MetaActionStat[];
     }>;
   };
   const row = json.data?.[0];
@@ -356,7 +462,7 @@ export async function fetchAdAccountInsights(params: {
   const purchase_value = sumActions(row.action_values, PURCHASE_TYPES);
 
   // Detailed breakdown by conversion category (auto-detected from Meta actions).
-  const conversions_breakdown = buildConversionsBreakdown(row.actions);
+  const conversions_breakdown = buildConversionsBreakdown(row.actions, row.conversions);
   // Total conversions = sum of every final-conversion bucket (no duplication).
   const conversions = Object.values(conversions_breakdown).reduce((s, v) => s + v, 0);
   const results = conversions;
