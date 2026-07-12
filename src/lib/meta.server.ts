@@ -258,11 +258,6 @@ type ConversionClassification = {
   aggregate: boolean;
 };
 
-function pixelEventName(actionType: string): string | null {
-  const match = actionType.match(/^(?:offsite|onsite)_conversion\.(?:fb_pixel_)?(.+)$/);
-  return match?.[1] ?? null;
-}
-
 // Classify only final conversion events that Ads Manager commonly treats as
 // result events. Generic pixel/custom conversion rows are intentionally ignored
 // here because they often overlap with lead/purchase/message rows or represent
