@@ -263,9 +263,10 @@ function pixelEventName(actionType: string): string | null {
   return match?.[1] ?? null;
 }
 
-// Classify only final conversion events. Engagement, clicks, page views,
-// landing page views, add-to-cart and checkout starts stay out of the unified
-// conversion count so the total is not inflated.
+// Classify only final conversion events that Ads Manager commonly treats as
+// result events. Generic pixel/custom conversion rows are intentionally ignored
+// here because they often overlap with lead/purchase/message rows or represent
+// non-final website events, which inflates the unified conversion total.
 function classifyConversion(actionType: string): ConversionClassification | null {
   const t = actionType.toLowerCase();
   const excluded = [
@@ -338,15 +339,6 @@ function classifyConversion(actionType: string): ConversionClassification | null
         aggregate: actionType === family || actionType === `omni_${family}`,
       };
     }
-  }
-
-  if (t.includes("offsite_conversion.custom") || t.includes("onsite_conversion.custom")) {
-    return { family: actionType, bucket: "Conversões personalizadas", aggregate: false };
-  }
-
-  const pixelEvent = pixelEventName(actionType);
-  if (pixelEvent && !excluded.some((term) => pixelEvent.includes(term))) {
-    return { family: pixelEvent, bucket: "Conversões do pixel", aggregate: false };
   }
 
   return null;
