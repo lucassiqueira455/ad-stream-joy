@@ -354,12 +354,11 @@ export async function fetchAdAccountInsights(params: {
   const initiate_checkout = sumActions(row.actions, IC_TYPES);
   const landing_page_views = sumActions(row.actions, LPV_TYPES);
   const purchase_value = sumActions(row.action_values, PURCHASE_TYPES);
-  const other_conversions = sumActions(row.actions, OTHER_CONVERSION_TYPES);
 
-  // Treat "Conversões" as every final conversion outcome we can read from
-  // Meta: forms/leads, messaging conversations, purchases and other standard
-  // conversion events. Cart/checkout stay available as separate funnel metrics.
-  const conversions = leads + messaging_conversations + purchases + other_conversions;
+  // Detailed breakdown by conversion category (auto-detected from Meta actions).
+  const conversions_breakdown = buildConversionsBreakdown(row.actions);
+  // Total conversions = sum of every final-conversion bucket (no duplication).
+  const conversions = Object.values(conversions_breakdown).reduce((s, v) => s + v, 0);
   const results = conversions;
 
   const roasEntry = row.purchase_roas?.find((r) => r.action_type === "omni_purchase")
@@ -394,5 +393,7 @@ export async function fetchAdAccountInsights(params: {
     initiate_checkout,
     conversions,
     cost_per_conversion: conversions > 0 ? spend / conversions : 0,
+    conversions_breakdown,
   };
 }
+
