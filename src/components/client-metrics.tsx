@@ -1,22 +1,16 @@
-import { useMemo, useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  BarChart3,
   DollarSign,
   Eye,
   Loader2,
-  MessageCircle,
   MousePointerClick,
   Percent,
   RefreshCcw,
-  Settings2,
-  ShoppingCart,
   Target,
-  TrendingUp,
   Trophy,
   Users,
-  Zap,
 } from "lucide-react";
 import { getClientMetrics } from "@/lib/ads-connections.functions";
 import { MetricCard } from "@/components/metric-card";
@@ -46,110 +40,31 @@ const DATE_OPTIONS: { value: DatePreset; label: string }[] = [
   { value: "last_month", label: "Mês passado" },
 ];
 
-type MetricKey =
-  | "spend"
-  | "impressions"
-  | "reach"
-  | "frequency"
-  | "cpm"
-  | "link_clicks"
-  | "cpc_link"
-  | "ctr_link"
-  | "clicks"
-  | "cpc"
-  | "ctr"
-  | "landing_page_views"
-  | "cost_per_landing_page_view"
-  | "results"
-  | "cost_per_result"
-  | "leads"
-  | "messaging_conversations"
-  | "purchases"
-  | "purchase_value"
-  | "roas"
-  | "add_to_cart"
-  | "initiate_checkout";
-
-type MetricFormat = "currency" | "number" | "percent" | "decimal" | "roas";
-
-const METRICS: {
-  key: MetricKey;
-  label: string;
-  icon: typeof DollarSign;
-  format: MetricFormat;
-  group: "Entrega" | "Cliques" | "Conversões";
-}[] = [
-  { key: "spend", label: "Valor gasto", icon: DollarSign, format: "currency", group: "Entrega" },
-  { key: "impressions", label: "Impressões", icon: Eye, format: "number", group: "Entrega" },
-  { key: "reach", label: "Alcance", icon: Users, format: "number", group: "Entrega" },
-  { key: "frequency", label: "Frequência", icon: Zap, format: "decimal", group: "Entrega" },
-  { key: "cpm", label: "CPM", icon: BarChart3, format: "currency", group: "Entrega" },
-  { key: "link_clicks", label: "Cliques no link", icon: MousePointerClick, format: "number", group: "Cliques" },
-  { key: "cpc_link", label: "CPC (link)", icon: TrendingUp, format: "currency", group: "Cliques" },
-  { key: "ctr_link", label: "CTR (link)", icon: Percent, format: "percent", group: "Cliques" },
-  { key: "clicks", label: "Cliques (todos)", icon: MousePointerClick, format: "number", group: "Cliques" },
-  { key: "cpc", label: "CPC (todos)", icon: TrendingUp, format: "currency", group: "Cliques" },
-  { key: "ctr", label: "CTR (todos)", icon: Percent, format: "percent", group: "Cliques" },
-  { key: "landing_page_views", label: "Visualizações da LP", icon: Eye, format: "number", group: "Cliques" },
-  { key: "cost_per_landing_page_view", label: "Custo por visualização da LP", icon: DollarSign, format: "currency", group: "Cliques" },
-  { key: "results", label: "Conversões", icon: Trophy, format: "number", group: "Conversões" },
-  { key: "cost_per_result", label: "Custo por conversão", icon: DollarSign, format: "currency", group: "Conversões" },
-  { key: "leads", label: "Leads", icon: Target, format: "number", group: "Conversões" },
-  { key: "messaging_conversations", label: "Mensagens", icon: MessageCircle, format: "number", group: "Conversões" },
-  { key: "purchases", label: "Compras", icon: ShoppingCart, format: "number", group: "Conversões" },
-  { key: "purchase_value", label: "Valor de conversão", icon: DollarSign, format: "currency", group: "Conversões" },
-  { key: "roas", label: "ROAS", icon: TrendingUp, format: "roas", group: "Conversões" },
-  { key: "add_to_cart", label: "Adições ao carrinho", icon: ShoppingCart, format: "number", group: "Conversões" },
-  { key: "initiate_checkout", label: "Checkouts iniciados", icon: ShoppingCart, format: "number", group: "Conversões" },
-];
-
-const DEFAULT_SELECTION: MetricKey[] = [
-  "spend", "impressions", "reach", "cpm",
-  "link_clicks", "cpc_link", "ctr_link",
-  "results", "cost_per_result", "leads", "messaging_conversations",
-  "purchases", "purchase_value", "roas",
-];
-
-function formatValue(value: number, format: string, currency: string | null): string {
+function fmtCurrency(value: number, currency: string | null): string {
   if (!Number.isFinite(value)) return "—";
-  if (format === "currency") {
-    try {
-      return new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: currency || "BRL",
-        maximumFractionDigits: 2,
-      }).format(value);
-    } catch {
-      return `${(currency ?? "")} ${value.toFixed(2)}`;
-    }
+  try {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: currency || "BRL",
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return `${currency ?? ""} ${value.toFixed(2)}`;
   }
-  if (format === "percent") return `${value.toFixed(2)}%`;
-  if (format === "decimal") return value.toFixed(2);
-  if (format === "roas") return `${value.toFixed(2)}x`;
+}
+
+function fmtNumber(value: number): string {
+  if (!Number.isFinite(value)) return "—";
   return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(value);
 }
 
+function fmtPercent(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  return `${value.toFixed(2)}%`;
+}
+
 export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; hasAccounts: boolean }) {
-  const storageKey = `metrics-selection:${clientId}`;
-  const [selected, setSelected] = useState<MetricKey[]>(DEFAULT_SELECTION);
   const [datePreset, setDatePreset] = useState<DatePreset>("last_30d");
-  const [pickerOpen, setPickerOpen] = useState(false);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved) as MetricKey[];
-        if (Array.isArray(parsed) && parsed.length > 0) setSelected(parsed);
-      }
-    } catch {}
-  }, [storageKey]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(selected));
-    } catch {}
-  }, [storageKey, selected]);
 
   const fetchMetrics = useServerFn(getClientMetrics);
   const query = useQuery({
@@ -158,17 +73,6 @@ export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; has
     enabled: hasAccounts,
     staleTime: 60_000,
   });
-
-  const visibleMetrics = useMemo(
-    () => METRICS.filter((m) => selected.includes(m.key)),
-    [selected],
-  );
-
-  const toggle = (key: MetricKey) => {
-    setSelected((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
-    );
-  };
 
   if (!hasAccounts) {
     return (
@@ -182,6 +86,10 @@ export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; has
 
   const totals = query.data?.totals;
   const currency = query.data?.currency ?? null;
+  const breakdown = totals?.conversions_breakdown ?? {};
+  const breakdownEntries = Object.entries(breakdown)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1]);
 
   return (
     <section className="mt-8">
@@ -216,50 +124,6 @@ export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; has
             )}
             Atualizar
           </button>
-          <div className="relative">
-            <button
-              onClick={() => setPickerOpen((v) => !v)}
-              className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm hover:bg-accent"
-            >
-              <Settings2 className="h-4 w-4" />
-              Métricas ({selected.length})
-            </button>
-            {pickerOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setPickerOpen(false)}
-                />
-                <div className="absolute right-0 z-20 mt-2 max-h-[70vh] w-72 overflow-y-auto rounded-lg border border-border bg-card p-2 shadow-lg">
-                  {(["Entrega", "Cliques", "Conversões"] as const).map((group) => (
-                    <div key={group} className="mb-2">
-                      <p className="px-2 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        {group}
-                      </p>
-                      {METRICS.filter((m) => m.group === group).map((m) => {
-                        const on = selected.includes(m.key);
-                        return (
-                          <label
-                            key={m.key}
-                            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={on}
-                              onChange={() => toggle(m.key)}
-                              className="h-4 w-4"
-                            />
-                            <m.icon className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span>{m.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
         </div>
       </div>
 
@@ -293,16 +157,41 @@ export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; has
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {visibleMetrics.map((m) => (
-              <MetricCard
-                key={m.key}
-                label={m.label}
-                value={formatValue(totals[m.key], m.format, currency)}
-                icon={m.icon}
-              />
-            ))}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <MetricCard label="Investimento" value={fmtCurrency(totals.spend, currency)} icon={DollarSign} />
+            <MetricCard label="Alcance" value={fmtNumber(totals.reach)} icon={Users} />
+            <MetricCard label="Impressões" value={fmtNumber(totals.impressions)} icon={Eye} />
+            <MetricCard label="Cliques" value={fmtNumber(totals.link_clicks || totals.clicks)} icon={MousePointerClick} />
+            <MetricCard label="CTR" value={fmtPercent(totals.ctr_link || totals.ctr)} icon={Percent} />
+            <MetricCard label="CPC" value={fmtCurrency(totals.cpc_link || totals.cpc, currency)} icon={Target} />
+            <MetricCard label="Conversões" value={fmtNumber(totals.conversions)} icon={Trophy} />
+            <MetricCard label="Custo por conversão" value={fmtCurrency(totals.cost_per_conversion, currency)} icon={DollarSign} />
           </div>
+
+          {breakdownEntries.length > 0 && (
+            <div className="mt-6 overflow-hidden rounded-xl border border-border bg-card">
+              <div className="border-b border-border px-4 py-3">
+                <h3 className="text-sm font-semibold">Detalhamento das conversões</h3>
+                <p className="text-xs text-muted-foreground">
+                  Por origem detectada automaticamente na Meta Ads API
+                </p>
+              </div>
+              <div className="divide-y divide-border">
+                {breakdownEntries.map(([label, value]) => {
+                  const pct = totals.conversions > 0 ? (value / totals.conversions) * 100 : 0;
+                  return (
+                    <div key={label} className="flex items-center justify-between px-4 py-3 text-sm">
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium">{label}</span>
+                        <span className="text-xs text-muted-foreground">{pct.toFixed(1)}%</span>
+                      </div>
+                      <span className="tabular-nums font-medium">{fmtNumber(value)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {query.data && query.data.accounts.length > 1 && (
             <div className="mt-6 overflow-hidden rounded-xl border border-border bg-card">
@@ -314,11 +203,13 @@ export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; has
                   <thead className="bg-background/50 text-xs uppercase tracking-wider text-muted-foreground">
                     <tr>
                       <th className="px-4 py-2 text-left">Conta</th>
-                      {visibleMetrics.map((m) => (
-                        <th key={m.key} className="px-4 py-2 text-right">
-                          {m.label}
-                        </th>
-                      ))}
+                      <th className="px-4 py-2 text-right">Investimento</th>
+                      <th className="px-4 py-2 text-right">Impressões</th>
+                      <th className="px-4 py-2 text-right">Cliques</th>
+                      <th className="px-4 py-2 text-right">CTR</th>
+                      <th className="px-4 py-2 text-right">CPC</th>
+                      <th className="px-4 py-2 text-right">Conversões</th>
+                      <th className="px-4 py-2 text-right">Custo/Conv.</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -326,21 +217,20 @@ export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; has
                       <tr key={row.account.id}>
                         <td className="px-4 py-2">
                           <div className="font-medium">{row.account.account_name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {row.account.platform}
-                          </div>
+                          <div className="text-xs text-muted-foreground">{row.account.platform}</div>
                         </td>
                         {row.insights ? (
-                          visibleMetrics.map((m) => (
-                            <td key={m.key} className="px-4 py-2 text-right tabular-nums">
-                              {formatValue(row.insights![m.key], m.format, row.account.currency)}
-                            </td>
-                          ))
+                          <>
+                            <td className="px-4 py-2 text-right tabular-nums">{fmtCurrency(row.insights.spend, row.account.currency)}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">{fmtNumber(row.insights.impressions)}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">{fmtNumber(row.insights.link_clicks || row.insights.clicks)}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">{fmtPercent(row.insights.ctr_link || row.insights.ctr)}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">{fmtCurrency(row.insights.cpc_link || row.insights.cpc, row.account.currency)}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">{fmtNumber(row.insights.conversions)}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">{fmtCurrency(row.insights.cost_per_conversion, row.account.currency)}</td>
+                          </>
                         ) : (
-                          <td
-                            colSpan={visibleMetrics.length}
-                            className="px-4 py-2 text-right text-xs text-destructive"
-                          >
+                          <td colSpan={7} className="px-4 py-2 text-right text-xs text-destructive">
                             {row.error ?? "Sem dados"}
                           </td>
                         )}
