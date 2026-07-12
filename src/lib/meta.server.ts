@@ -296,12 +296,10 @@ function classifyConversion(actionType: string): ConversionClassification | null
   }
 
   if (
-    t.includes("messaging_conversation")
+    MESSAGE_CONVERSATION_TYPES.includes(actionType)
+    || MESSAGE_REPLY_TYPES.includes(actionType)
+    || t.includes("messaging_conversation_started")
     || t.includes("messaging_first_reply")
-    || t.includes("message_send")
-    || t.includes("whatsapp")
-    || t.includes("messenger")
-    || t.includes("instagram_direct")
   ) {
     const bucket = t.includes("whatsapp")
       ? "WhatsApp"
