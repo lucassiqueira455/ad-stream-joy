@@ -243,6 +243,45 @@ function sumMessagingConversations(
   return Math.max(conversations, replies);
 }
 
+// Categorize an action_type into a human-readable conversion bucket.
+// Returns null if the action is not a "final" conversion (excludes ATC/IC/LPV/clicks/views).
+function categorizeConversion(actionType: string): string | null {
+  const t = actionType.toLowerCase();
+  if (LEAD_TYPES.includes(actionType)) return "Formulários";
+  if (PURCHASE_TYPES.includes(actionType)) return "Compras";
+  if (t.includes("whatsapp")) return "WhatsApp";
+  if (t.includes("messenger")) return "Messenger";
+  if (t.includes("instagram")) return "Instagram Direct";
+  if (MESSAGE_CONVERSATION_TYPES.includes(actionType)) return "Mensagens";
+  // ignore first_reply to avoid duplication with conversation_started
+  if (MESSAGE_REPLY_TYPES.includes(actionType)) return null;
+  if (t.includes("call") || t.includes("phone")) return "Ligações";
+  if (t.includes("complete_registration")) return "Cadastros";
+  if (t.includes("subscribe")) return "Assinaturas";
+  if (t.includes("contact")) return "Contatos";
+  if (t.includes("schedule")) return "Agendamentos";
+  if (t.includes("submit_application")) return "Candidaturas";
+  if (t.includes("start_trial")) return "Trials";
+  return null;
+}
+
+function buildConversionsBreakdown(
+  actions: Array<{ action_type: string; value: string }> | undefined,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!actions) return out;
+  // Dedup messaging: if any conversation_started type has a value, skip first_reply entirely (handled by categorize returning null).
+  for (const a of actions) {
+    const bucket = categorizeConversion(a.action_type);
+    if (!bucket) continue;
+    const v = Number(a.value || 0);
+    if (!v) continue;
+    out[bucket] = (out[bucket] ?? 0) + v;
+  }
+  return out;
+}
+
+
 export async function fetchAdAccountInsights(params: {
   token: string;
   externalAccountId: string;
