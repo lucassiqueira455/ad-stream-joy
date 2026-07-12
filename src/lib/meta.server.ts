@@ -143,6 +143,8 @@ export interface MetaInsights {
   // legacy generic
   conversions: number;
   cost_per_conversion: number;
+  // detailed breakdown of conversions by category (Formulários, WhatsApp, ...)
+  conversions_breakdown: Record<string, number>;
 }
 
 const EMPTY_INSIGHTS: MetaInsights = {
@@ -153,7 +155,9 @@ const EMPTY_INSIGHTS: MetaInsights = {
   leads: 0, messaging_conversations: 0, purchases: 0, purchase_value: 0, roas: 0,
   add_to_cart: 0, initiate_checkout: 0,
   conversions: 0, cost_per_conversion: 0,
+  conversions_breakdown: {},
 };
+
 
 const PURCHASE_TYPES = [
   "purchase",
