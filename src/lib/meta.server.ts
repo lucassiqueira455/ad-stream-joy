@@ -168,10 +168,15 @@ const EMPTY_INSIGHTS: MetaInsights = {
 
 const PROFILE_VISIT_TYPES = [
   "onsite_conversion.ig_profile_visit",
+  "onsite_conversion.instagram_profile_visit",
+  "onsite_conversion.profile_visits",
   "ig_profile_visit",
+  "instagram_profile_visit",
   "instagram_profile_visits",
   "profile_visit",
+  "profile_visits",
   "onsite_conversion.profile_visit",
+  "omni_profile_visit",
 ];
 const PAGE_ENGAGEMENT_TYPES = ["page_engagement"];
 const POST_ENGAGEMENT_TYPES = ["post_engagement"];
@@ -242,6 +247,7 @@ const OTHER_CONVERSION_TYPES = [
 ];
 
 type MetaActionStat = { action_type: string; value?: string } & Record<string, string | undefined>;
+type ProfileVisitFallback = { profileVisits: number; spend: number };
 
 function actionValue(action: MetaActionStat): number {
   if (action.value !== undefined) return Number(action.value || 0);
@@ -258,6 +264,21 @@ function sumActions(
   return actions
     .filter((a) => types.includes(a.action_type))
     .reduce((s, a) => s + actionValue(a), 0);
+}
+
+function maxActionValue(
+  sources: Array<MetaActionStat[] | undefined>,
+  types: string[],
+): number {
+  let max = 0;
+  for (const actions of sources) {
+    for (const action of actions ?? []) {
+      if (types.includes(action.action_type)) {
+        max = Math.max(max, actionValue(action));
+      }
+    }
+  }
+  return max;
 }
 
 function sumMessagingConversations(
@@ -391,13 +412,136 @@ function buildConversionsBreakdown(
   }
 
   const out: Record<string, number> = {};
-  for (const group of Object.values(groups)) {
+  for (const [family, group] of Object.entries(groups)) {
+    const sourceEntries = Object.entries(group.sourceMaxByBucket);
+    const sourceTotal = Object.values(group.sourceMaxByBucket).reduce((sum, v) => sum + v, 0);
     if (group.aggregateMax > 0 && group.aggregateBucket) {
       out[group.aggregateBucket] = (out[group.aggregateBucket] ?? 0) + group.aggregateMax;
       continue;
     }
-    for (const [bucket, value] of Object.entries(group.sourceMaxByBucket)) {
+    const sourceValues = sourceEntries.map(([, value]) => value);
+    const hasSameValueDuplicates = sourceValues.length > 1
+      && sourceValues.every((value) => value === sourceValues[0]);
+    if (family === "lead" && hasSameValueDuplicates) {
+      out.Leads = (out.Leads ?? 0) + sourceValues[0];
+      continue;
+    }
+    for (const [bucket, value] of sourceEntries) {
       out[bucket] = (out[bucket] ?? 0) + value;
+    }
+  }
+  return out;
+}
+
+async function fetchProfileVisitFallback(params: {
+  token: string;
+  externalAccountId: string;
+  datePreset: string;
+}): Promise<ProfileVisitFallback> {
+  const rows: Array<{
+    adsetId: string;
+    spend: number;
+    linkClicks: number;
+    explicitProfileVisits: number;
+  }> = [];
+  let insightsNext: string | undefined = (() => {
+    const url = new URL(`${GRAPH}/act_${params.externalAccountId}/insights`);
+    url.searchParams.set(
+      "fields",
+      ["adset_id", "spend", "inline_link_clicks", "actions", "conversions"].join(","),
+    );
+    url.searchParams.set("level", "adset");
+    url.searchParams.set("date_preset", params.datePreset);
+    url.searchParams.set("use_unified_attribution_setting", "true");
+    url.searchParams.set("limit", "500");
+    url.searchParams.set("access_token", params.token);
+    return url.toString();
+  })();
+
+  while (insightsNext) {
+    const res = await fetch(insightsNext);
+    if (!res.ok) return { profileVisits: 0, spend: 0 };
+    const json = (await res.json()) as {
+      data?: Array<{
+        adset_id?: string;
+        spend?: string;
+        inline_link_clicks?: string;
+        actions?: MetaActionStat[];
+        conversions?: MetaActionStat[];
+      }>;
+      paging?: { next?: string };
+    };
+    for (const row of json.data ?? []) {
+      if (!row.adset_id) continue;
+      const explicitProfileVisits = maxActionValue([row.actions, row.conversions], PROFILE_VISIT_TYPES);
+      rows.push({
+        adsetId: row.adset_id,
+        spend: Number(row.spend || 0),
+        linkClicks: Number(row.inline_link_clicks || 0),
+        explicitProfileVisits,
+      });
+    }
+    insightsNext = json.paging?.next;
+  }
+
+  const explicitProfileVisits = rows.reduce((sum, row) => sum + row.explicitProfileVisits, 0);
+  if (explicitProfileVisits > 0) {
+    return {
+      profileVisits: explicitProfileVisits,
+      spend: rows.reduce((sum, row) => sum + (row.explicitProfileVisits > 0 ? row.spend : 0), 0),
+    };
+  }
+
+  const profileAdsetIds = await fetchProfileVisitAdsetIds({
+    token: params.token,
+    adsetIds: rows.map((row) => row.adsetId),
+  });
+
+  let profileVisits = 0;
+  let spend = 0;
+  for (const row of rows) {
+    if (!profileAdsetIds.has(row.adsetId)) continue;
+    profileVisits += row.linkClicks;
+    spend += row.spend;
+  }
+
+  return { profileVisits, spend };
+}
+
+async function fetchProfileVisitAdsetIds(params: {
+  token: string;
+  adsetIds: string[];
+}): Promise<Set<string>> {
+  const out = new Set<string>();
+  const uniqueIds = [...new Set(params.adsetIds)].filter(Boolean);
+  for (let i = 0; i < uniqueIds.length; i += 50) {
+    const ids = uniqueIds.slice(i, i + 50);
+    const url = new URL(`${GRAPH}/`);
+    url.searchParams.set("ids", ids.join(","));
+    url.searchParams.set("fields", "id,optimization_goal,destination_type,promoted_object");
+    url.searchParams.set("access_token", params.token);
+    const res = await fetch(url.toString());
+    if (!res.ok) continue;
+    const json = (await res.json()) as Record<string, {
+      id?: string;
+      optimization_goal?: string;
+      destination_type?: string;
+      promoted_object?: Record<string, unknown>;
+    }>;
+    for (const [id, adset] of Object.entries(json)) {
+      const haystack = [
+        adset.optimization_goal,
+        adset.destination_type,
+        JSON.stringify(adset.promoted_object ?? {}),
+      ].join(" ").toLowerCase();
+      if (
+        haystack.includes("visit_instagram_profile")
+        || haystack.includes("instagram_profile")
+        || haystack.includes("ig_profile")
+        || haystack.includes("profile_visit")
+      ) {
+        out.add(id);
+      }
     }
   }
   return out;
@@ -481,11 +625,19 @@ export async function fetchAdAccountInsights(params: {
   const initiate_checkout = sumActions(row.actions, IC_TYPES);
   const landing_page_views = sumActions(row.actions, LPV_TYPES);
   const purchase_value = sumActions(row.action_values, PURCHASE_TYPES);
-  const profile_visits = sumActions(row.actions, PROFILE_VISIT_TYPES);
+  const accountProfileVisits = maxActionValue([row.actions, row.conversions], PROFILE_VISIT_TYPES);
+  const profileFallback = accountProfileVisits > 0
+    ? { profileVisits: accountProfileVisits, spend }
+    : await fetchProfileVisitFallback({ token, externalAccountId, datePreset });
+  const profile_visits = Math.max(accountProfileVisits, profileFallback.profileVisits);
   const page_engagement = sumActions(row.actions, PAGE_ENGAGEMENT_TYPES);
   const post_engagement = sumActions(row.actions, POST_ENGAGEMENT_TYPES);
   const video_views = sumActions(row.actions, VIDEO_VIEW_TYPES);
-  const cost_per_profile_visit = profile_visits > 0 ? spend / profile_visits : 0;
+  const cost_per_profile_visit = profile_visits > 0
+    ? (profileFallback.profileVisits > accountProfileVisits && profileFallback.spend > 0
+      ? profileFallback.spend / profile_visits
+      : spend / profile_visits)
+    : 0;
 
   // Detailed breakdown by conversion category (auto-detected from Meta actions).
   const conversions_breakdown = buildConversionsBreakdown(row.actions, row.conversions);
