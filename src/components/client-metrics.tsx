@@ -171,7 +171,8 @@ export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; has
     queryKey: ["client-metrics", clientId, datePreset],
     queryFn: () => fetchMetrics({ data: { clientId, datePreset } }),
     enabled: hasAccounts,
-    staleTime: 60_000,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const totals = query.data?.totals ?? null;
