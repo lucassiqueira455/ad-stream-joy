@@ -49,8 +49,18 @@ const DATE_OPTIONS: { value: DatePreset; label: string }[] = [
   { value: "last_month", label: "Mês passado" },
 ];
 
-import type { MetaInsights } from "@/lib/meta.server";
-type Totals = MetaInsights;
+type Totals = {
+  spend: number; impressions: number; reach: number; frequency: number; cpm: number;
+  clicks: number; link_clicks: number; cpc: number; cpc_link: number; ctr: number; ctr_link: number;
+  landing_page_views: number; cost_per_landing_page_view: number;
+  results: number; cost_per_result: number;
+  leads: number; messaging_conversations: number; purchases: number; purchase_value: number; roas: number;
+  add_to_cart: number; initiate_checkout: number;
+  profile_visits: number; cost_per_profile_visit: number;
+  page_engagement: number; post_engagement: number; video_views: number;
+  conversions: number; cost_per_conversion: number;
+  conversions_breakdown: Record<string, number>;
+};
 
 type MetricFormat = "currency" | "number" | "percent" | "decimal";
 
