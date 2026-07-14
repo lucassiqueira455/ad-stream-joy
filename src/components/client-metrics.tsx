@@ -49,12 +49,8 @@ const DATE_OPTIONS: { value: DatePreset; label: string }[] = [
   { value: "last_month", label: "Mês passado" },
 ];
 
-type Totals = NonNullable<ReturnType<typeof useMetricsQuery>["data"]>["totals"];
-
-// Placeholder for TS – actual type inferred below
-function useMetricsQuery(_: unknown) {
-  return null as never;
-}
+import type { MetaInsights } from "@/lib/meta.server";
+type Totals = MetaInsights;
 
 type MetricFormat = "currency" | "number" | "percent" | "decimal";
 
