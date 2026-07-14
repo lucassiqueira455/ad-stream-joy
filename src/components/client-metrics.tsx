@@ -105,10 +105,10 @@ const METRICS: MetricDef[] = [
 
 const DEFAULT_SELECTED = [
   "spend", "reach", "impressions", "clicks", "ctr", "cpc",
-  "conversions", "cost_per_conversion",
+  "conversions", "cost_per_conversion", "profile_visits", "cost_per_profile_visit",
 ];
 
-const STORAGE_KEY = "client-metrics-selection";
+const STORAGE_KEY = "client-metrics-selection-v2";
 
 function fmtCurrency(value: number, currency: string | null): string {
   if (!Number.isFinite(value)) return "—";
@@ -363,6 +363,8 @@ export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; has
                       <th className="px-4 py-2 text-right">CPC</th>
                       <th className="px-4 py-2 text-right">Conversões</th>
                       <th className="px-4 py-2 text-right">Custo/Conv.</th>
+                      <th className="px-4 py-2 text-right">Visitas ao perfil</th>
+                      <th className="px-4 py-2 text-right">Custo/visita</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -381,9 +383,11 @@ export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; has
                             <td className="px-4 py-2 text-right tabular-nums">{fmtCurrency(row.insights.cpc_link || row.insights.cpc, row.account.currency)}</td>
                             <td className="px-4 py-2 text-right tabular-nums">{fmtNumber(row.insights.conversions)}</td>
                             <td className="px-4 py-2 text-right tabular-nums">{fmtCurrency(row.insights.cost_per_conversion, row.account.currency)}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">{fmtNumber(row.insights.profile_visits)}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">{fmtCurrency(row.insights.cost_per_profile_visit, row.account.currency)}</td>
                           </>
                         ) : (
-                          <td colSpan={7} className="px-4 py-2 text-right text-xs text-destructive">
+                          <td colSpan={9} className="px-4 py-2 text-right text-xs text-destructive">
                             {row.error ?? "Sem dados"}
                           </td>
                         )}
