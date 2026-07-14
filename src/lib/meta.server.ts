@@ -140,6 +140,12 @@ export interface MetaInsights {
   roas: number;
   add_to_cart: number;
   initiate_checkout: number;
+  // engagement
+  profile_visits: number;
+  cost_per_profile_visit: number;
+  page_engagement: number;
+  post_engagement: number;
+  video_views: number;
   // legacy generic
   conversions: number;
   cost_per_conversion: number;
@@ -154,9 +160,22 @@ const EMPTY_INSIGHTS: MetaInsights = {
   results: 0, cost_per_result: 0,
   leads: 0, messaging_conversations: 0, purchases: 0, purchase_value: 0, roas: 0,
   add_to_cart: 0, initiate_checkout: 0,
+  profile_visits: 0, cost_per_profile_visit: 0,
+  page_engagement: 0, post_engagement: 0, video_views: 0,
   conversions: 0, cost_per_conversion: 0,
   conversions_breakdown: {},
 };
+
+const PROFILE_VISIT_TYPES = [
+  "onsite_conversion.ig_profile_visit",
+  "ig_profile_visit",
+  "instagram_profile_visits",
+  "profile_visit",
+  "onsite_conversion.profile_visit",
+];
+const PAGE_ENGAGEMENT_TYPES = ["page_engagement"];
+const POST_ENGAGEMENT_TYPES = ["post_engagement"];
+const VIDEO_VIEW_TYPES = ["video_view", "omni_video_view"];
 
 
 const PURCHASE_TYPES = [
