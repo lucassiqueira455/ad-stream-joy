@@ -460,7 +460,7 @@ async function fetchProfileVisitFallback(params: {
 
   while (insightsNext) {
     const res = await fetch(insightsNext);
-    if (!res.ok) return { profileVisits, spend };
+    if (!res.ok) return { profileVisits: 0, spend: 0 };
     const json = (await res.json()) as {
       data?: Array<{
         adset_id?: string;
