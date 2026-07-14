@@ -481,6 +481,11 @@ export async function fetchAdAccountInsights(params: {
   const initiate_checkout = sumActions(row.actions, IC_TYPES);
   const landing_page_views = sumActions(row.actions, LPV_TYPES);
   const purchase_value = sumActions(row.action_values, PURCHASE_TYPES);
+  const profile_visits = sumActions(row.actions, PROFILE_VISIT_TYPES);
+  const page_engagement = sumActions(row.actions, PAGE_ENGAGEMENT_TYPES);
+  const post_engagement = sumActions(row.actions, POST_ENGAGEMENT_TYPES);
+  const video_views = sumActions(row.actions, VIDEO_VIEW_TYPES);
+  const cost_per_profile_visit = profile_visits > 0 ? spend / profile_visits : 0;
 
   // Detailed breakdown by conversion category (auto-detected from Meta actions).
   const conversions_breakdown = buildConversionsBreakdown(row.actions, row.conversions);
