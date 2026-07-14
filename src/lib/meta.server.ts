@@ -292,6 +292,8 @@ function classifyConversion(actionType: string): ConversionClassification | null
     "add_to_cart",
     "initiate_checkout",
     "search",
+    "profile_visit",
+    "ig_profile_visit",
   ];
   if (excluded.some((term) => t.includes(term))) return null;
 
