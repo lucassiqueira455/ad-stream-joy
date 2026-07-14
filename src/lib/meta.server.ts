@@ -438,32 +438,12 @@ async function fetchProfileVisitFallback(params: {
   externalAccountId: string;
   datePreset: string;
 }): Promise<ProfileVisitFallback> {
-  const profileOptimizedAdsets = new Set<string>();
-  let adsetsNext: string | undefined = (() => {
-    const url = new URL(`${GRAPH}/act_${params.externalAccountId}/adsets`);
-    url.searchParams.set("fields", "id,optimization_goal");
-    url.searchParams.set("limit", "500");
-    url.searchParams.set("access_token", params.token);
-    return url.toString();
-  })();
-
-  while (adsetsNext) {
-    const res = await fetch(adsetsNext);
-    if (!res.ok) return { profileVisits: 0, spend: 0 };
-    const json = (await res.json()) as {
-      data?: Array<{ id?: string; optimization_goal?: string }>;
-      paging?: { next?: string };
-    };
-    for (const adset of json.data ?? []) {
-      if (adset.id && adset.optimization_goal === "VISIT_INSTAGRAM_PROFILE") {
-        profileOptimizedAdsets.add(adset.id);
-      }
-    }
-    adsetsNext = json.paging?.next;
-  }
-
-  let profileVisits = 0;
-  let spend = 0;
+  const rows: Array<{
+    adsetId: string;
+    spend: number;
+    linkClicks: number;
+    explicitProfileVisits: number;
+  }> = [];
   let insightsNext: string | undefined = (() => {
     const url = new URL(`${GRAPH}/act_${params.externalAccountId}/insights`);
     url.searchParams.set(
@@ -492,20 +472,79 @@ async function fetchProfileVisitFallback(params: {
       paging?: { next?: string };
     };
     for (const row of json.data ?? []) {
+      if (!row.adset_id) continue;
       const explicitProfileVisits = maxActionValue([row.actions, row.conversions], PROFILE_VISIT_TYPES);
-      const inferredProfileVisits = row.adset_id && profileOptimizedAdsets.has(row.adset_id)
-        ? Number(row.inline_link_clicks || 0)
-        : 0;
-      const rowProfileVisits = explicitProfileVisits || inferredProfileVisits;
-      if (rowProfileVisits > 0) {
-        profileVisits += rowProfileVisits;
-        spend += Number(row.spend || 0);
-      }
+      rows.push({
+        adsetId: row.adset_id,
+        spend: Number(row.spend || 0),
+        linkClicks: Number(row.inline_link_clicks || 0),
+        explicitProfileVisits,
+      });
     }
     insightsNext = json.paging?.next;
   }
 
+  const explicitProfileVisits = rows.reduce((sum, row) => sum + row.explicitProfileVisits, 0);
+  if (explicitProfileVisits > 0) {
+    return {
+      profileVisits: explicitProfileVisits,
+      spend: rows.reduce((sum, row) => sum + (row.explicitProfileVisits > 0 ? row.spend : 0), 0),
+    };
+  }
+
+  const profileAdsetIds = await fetchProfileVisitAdsetIds({
+    token: params.token,
+    adsetIds: rows.map((row) => row.adsetId),
+  });
+
+  let profileVisits = 0;
+  let spend = 0;
+  for (const row of rows) {
+    if (!profileAdsetIds.has(row.adsetId)) continue;
+    profileVisits += row.linkClicks;
+    spend += row.spend;
+  }
+
   return { profileVisits, spend };
+}
+
+async function fetchProfileVisitAdsetIds(params: {
+  token: string;
+  adsetIds: string[];
+}): Promise<Set<string>> {
+  const out = new Set<string>();
+  const uniqueIds = [...new Set(params.adsetIds)].filter(Boolean);
+  for (let i = 0; i < uniqueIds.length; i += 50) {
+    const ids = uniqueIds.slice(i, i + 50);
+    const url = new URL(`${GRAPH}/`);
+    url.searchParams.set("ids", ids.join(","));
+    url.searchParams.set("fields", "id,optimization_goal,destination_type,promoted_object");
+    url.searchParams.set("access_token", params.token);
+    const res = await fetch(url.toString());
+    if (!res.ok) continue;
+    const json = (await res.json()) as Record<string, {
+      id?: string;
+      optimization_goal?: string;
+      destination_type?: string;
+      promoted_object?: Record<string, unknown>;
+    }>;
+    for (const [id, adset] of Object.entries(json)) {
+      const haystack = [
+        adset.optimization_goal,
+        adset.destination_type,
+        JSON.stringify(adset.promoted_object ?? {}),
+      ].join(" ").toLowerCase();
+      if (
+        haystack.includes("visit_instagram_profile")
+        || haystack.includes("instagram_profile")
+        || haystack.includes("ig_profile")
+        || haystack.includes("profile_visit")
+      ) {
+        out.add(id);
+      }
+    }
+  }
+  return out;
 }
 
 
