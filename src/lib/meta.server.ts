@@ -247,6 +247,17 @@ const OTHER_CONVERSION_TYPES = [
 ];
 
 type MetaActionStat = { action_type: string; value?: string } & Record<string, string | undefined>;
+type MetaResultStat = {
+  indicator?: string;
+  values?: Array<{ value?: string }>;
+};
+type CampaignMetricBreakdown = {
+  conversions: number;
+  conversionSpend: number;
+  conversionsBreakdown: Record<string, number>;
+  profileVisits: number;
+  profileSpend: number;
+};
 
 function actionValue(action: MetaActionStat): number {
   if (action.value !== undefined) return Number(action.value || 0);
@@ -258,6 +269,11 @@ function actionValue(action: MetaActionStat): number {
 function costValue(action: MetaActionStat): number {
   if (action.value !== undefined) return Number(action.value || 0);
   return Number(action["7d_click"] || action["1d_view"] || 0);
+}
+
+function resultValue(result: MetaResultStat): number {
+  if (!result.values) return 0;
+  return result.values.reduce((sum, item) => sum + Number(item.value || 0), 0);
 }
 
 function sumActions(
@@ -290,6 +306,14 @@ function isProfileVisitType(actionType: string): boolean {
   return PROFILE_VISIT_TYPES.includes(actionType)
     || (t.includes("profile") && t.includes("visit"))
     || t.includes("instagram_profile");
+}
+
+function isProfileVisitResult(indicator: string | undefined): boolean {
+  const t = (indicator ?? "").toLowerCase();
+  return t === "profile_visit_view"
+    || t === "total_profile_visits"
+    || t.includes("profile_visit")
+    || (t.includes("profile") && t.includes("visit"));
 }
 
 function pickOfficialCost(
@@ -539,6 +563,86 @@ function classifyOfficialConversion(actionType: string): ConversionClassificatio
   };
 }
 
+async function fetchCampaignMetricBreakdown(params: {
+  token: string;
+  externalAccountId: string;
+  datePreset: string;
+}): Promise<CampaignMetricBreakdown> {
+  const out: CampaignMetricBreakdown = {
+    conversions: 0,
+    conversionSpend: 0,
+    conversionsBreakdown: {},
+    profileVisits: 0,
+    profileSpend: 0,
+  };
+
+  let next: string | undefined = (() => {
+    const url = new URL(`${GRAPH}/act_${params.externalAccountId}/insights`);
+    url.searchParams.set(
+      "fields",
+      [
+        "campaign_id",
+        "campaign_name",
+        "spend",
+        "actions",
+        "conversions",
+        "results",
+        "cost_per_result",
+      ].join(","),
+    );
+    url.searchParams.set("date_preset", params.datePreset);
+    url.searchParams.set("use_unified_attribution_setting", "true");
+    url.searchParams.set("level", "campaign");
+    url.searchParams.set("limit", "500");
+    url.searchParams.set("access_token", params.token);
+    return url.toString();
+  })();
+
+  while (next) {
+    const res = await fetch(next);
+    if (!res.ok) throw new Error(`Meta campaign insights failed: ${await res.text()}`);
+    const json = (await res.json()) as {
+      data?: Array<{
+        spend?: string;
+        actions?: MetaActionStat[];
+        conversions?: MetaActionStat[];
+        results?: MetaResultStat[];
+        cost_per_result?: MetaResultStat[];
+      }>;
+      paging?: { next?: string };
+    };
+
+    for (const row of json.data ?? []) {
+      const spend = Number(row.spend || 0);
+
+      const profileVisits = (row.results ?? [])
+        .filter((result) => isProfileVisitResult(result.indicator))
+        .reduce((sum, result) => sum + resultValue(result), 0);
+      if (profileVisits > 0) {
+        const officialProfileCost = (row.cost_per_result ?? [])
+          .filter((result) => isProfileVisitResult(result.indicator))
+          .reduce((sum, result) => sum + resultValue(result), 0);
+        out.profileVisits += profileVisits;
+        out.profileSpend += officialProfileCost > 0 ? officialProfileCost * profileVisits : spend;
+      }
+
+      const details = buildConversionDetails(row.actions, row.conversions);
+      const rowConversions = Object.values(details.breakdown).reduce((sum, value) => sum + value, 0);
+      if (rowConversions > 0) {
+        out.conversions += rowConversions;
+        out.conversionSpend += spend;
+        for (const [bucket, value] of Object.entries(details.breakdown)) {
+          out.conversionsBreakdown[bucket] = (out.conversionsBreakdown[bucket] ?? 0) + value;
+        }
+      }
+    }
+
+    next = json.paging?.next;
+  }
+
+  return out;
+}
+
 
 export async function fetchAdAccountInsights(params: {
   token: string;
@@ -618,7 +722,6 @@ export async function fetchAdAccountInsights(params: {
   const landing_page_views = sumActions(row.actions, LPV_TYPES);
   const purchase_value = sumActions(row.action_values, PURCHASE_TYPES);
   const accountProfileVisits = maxActionValueWhere([row.actions, row.conversions], isProfileVisitType);
-  const profile_visits = accountProfileVisits;
   const page_engagement = sumActions(row.actions, PAGE_ENGAGEMENT_TYPES);
   const post_engagement = sumActions(row.actions, POST_ENGAGEMENT_TYPES);
   const video_views = sumActions(row.actions, VIDEO_VIEW_TYPES);
@@ -626,11 +729,20 @@ export async function fetchAdAccountInsights(params: {
     [row.cost_per_action_type, row.cost_per_conversion],
     isProfileVisitType,
   );
-  const cost_per_profile_visit = profile_visits > 0 ? (officialProfileVisitCost || spend / profile_visits) : 0;
+
+  const campaignMetrics = await fetchCampaignMetricBreakdown({ token, externalAccountId, datePreset });
+  const profile_visits = Math.max(accountProfileVisits, campaignMetrics.profileVisits);
+  const cost_per_profile_visit = profile_visits > 0
+    ? (campaignMetrics.profileVisits > 0
+      ? campaignMetrics.profileSpend / campaignMetrics.profileVisits
+      : officialProfileVisitCost || spend / profile_visits)
+    : 0;
 
   // Detailed breakdown by conversion category (auto-detected from Meta actions).
   const conversionDetails = buildConversionDetails(row.actions, row.conversions);
-  const conversions_breakdown = conversionDetails.breakdown;
+  const conversions_breakdown = campaignMetrics.conversions > 0
+    ? campaignMetrics.conversionsBreakdown
+    : conversionDetails.breakdown;
   // Total conversions = sum of every final-conversion bucket (no duplication).
   const conversions = Object.values(conversions_breakdown).reduce((s, v) => s + v, 0);
   const results = conversions;
@@ -644,7 +756,10 @@ export async function fetchAdAccountInsights(params: {
   const roas = roasEntry ? Number(roasEntry.value || 0) : (spend > 0 ? purchase_value / spend : 0);
 
   const cost_per_landing_page_view = landing_page_views > 0 ? spend / landing_page_views : 0;
-  const cost_per_result = results > 0 ? (officialConversionCost || spend / results) : 0;
+  const conversionSpend = campaignMetrics.conversions > 0 ? campaignMetrics.conversionSpend : spend;
+  const cost_per_result = results > 0
+    ? (campaignMetrics.conversions > 0 ? conversionSpend / results : officialConversionCost || spend / results)
+    : 0;
 
   return {
     spend,
@@ -675,7 +790,9 @@ export async function fetchAdAccountInsights(params: {
     post_engagement,
     video_views,
     conversions,
-    cost_per_conversion: conversions > 0 ? (officialConversionCost || spend / conversions) : 0,
+    cost_per_conversion: conversions > 0
+      ? (campaignMetrics.conversions > 0 ? conversionSpend / conversions : officialConversionCost || spend / conversions)
+      : 0,
     conversions_breakdown,
   };
 }
