@@ -136,6 +136,7 @@ export const getClientMetrics = createServerFn({ method: "POST" })
         purchase_value: 0,
         add_to_cart: 0, initiate_checkout: 0,
         profile_visits: 0, page_engagement: 0, post_engagement: 0, video_views: 0,
+        conversion_cost_total: 0, profile_visit_cost_total: 0,
       };
       const breakdown: Record<string, number> = {};
       for (const r of withInsights) {
@@ -156,6 +157,8 @@ export const getClientMetrics = createServerFn({ method: "POST" })
         s.page_engagement += i.page_engagement;
         s.post_engagement += i.post_engagement;
         s.video_views += i.video_views;
+        s.conversion_cost_total += i.cost_per_conversion * i.conversions;
+        s.profile_visit_cost_total += i.cost_per_profile_visit * i.profile_visits;
         for (const [k, v] of Object.entries(i.conversions_breakdown)) {
           breakdown[k] = (breakdown[k] ?? 0) + v;
         }
@@ -176,7 +179,7 @@ export const getClientMetrics = createServerFn({ method: "POST" })
         landing_page_views: s.landing_page_views,
         cost_per_landing_page_view: s.landing_page_views > 0 ? s.spend / s.landing_page_views : 0,
         results: conversions,
-        cost_per_result: conversions > 0 ? s.spend / conversions : 0,
+        cost_per_result: conversions > 0 ? s.conversion_cost_total / conversions : 0,
         leads: s.leads,
         messaging_conversations: s.messaging_conversations,
         purchases: s.purchases,
@@ -185,12 +188,12 @@ export const getClientMetrics = createServerFn({ method: "POST" })
         add_to_cart: s.add_to_cart,
         initiate_checkout: s.initiate_checkout,
         profile_visits: s.profile_visits,
-        cost_per_profile_visit: s.profile_visits > 0 ? s.spend / s.profile_visits : 0,
+        cost_per_profile_visit: s.profile_visits > 0 ? s.profile_visit_cost_total / s.profile_visits : 0,
         page_engagement: s.page_engagement,
         post_engagement: s.post_engagement,
         video_views: s.video_views,
         conversions,
-        cost_per_conversion: conversions > 0 ? s.spend / conversions : 0,
+        cost_per_conversion: conversions > 0 ? s.conversion_cost_total / conversions : 0,
         conversions_breakdown: breakdown,
       };
     }
