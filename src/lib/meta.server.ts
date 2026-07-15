@@ -565,7 +565,6 @@ export async function fetchAdAccountInsights(params: {
       "conversions",
       "cost_per_action_type",
       "cost_per_conversion",
-      "cost_per_action_result",
       "action_values",
       "conversion_values",
       "purchase_roas",
@@ -596,7 +595,6 @@ export async function fetchAdAccountInsights(params: {
       conversions?: MetaActionStat[];
       cost_per_action_type?: MetaActionStat[];
       cost_per_conversion?: MetaActionStat[];
-      cost_per_action_result?: MetaActionStat[];
       action_values?: MetaActionStat[];
       conversion_values?: MetaActionStat[];
       purchase_roas?: MetaActionStat[];
