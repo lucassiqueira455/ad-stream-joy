@@ -247,13 +247,17 @@ const OTHER_CONVERSION_TYPES = [
 ];
 
 type MetaActionStat = { action_type: string; value?: string } & Record<string, string | undefined>;
-type ProfileVisitFallback = { profileVisits: number; spend: number };
 
 function actionValue(action: MetaActionStat): number {
   if (action.value !== undefined) return Number(action.value || 0);
   // Some Insights responses return attribution-window columns instead of
   // `value`. In that case, add the requested click/view windows only.
   return ["7d_click", "1d_view"].reduce((sum, key) => sum + Number(action[key] || 0), 0);
+}
+
+function costValue(action: MetaActionStat): number {
+  if (action.value !== undefined) return Number(action.value || 0);
+  return Number(action["7d_click"] || action["1d_view"] || 0);
 }
 
 function sumActions(
@@ -286,6 +290,18 @@ function isProfileVisitType(actionType: string): boolean {
   return PROFILE_VISIT_TYPES.includes(actionType)
     || (t.includes("profile") && t.includes("visit"))
     || t.includes("instagram_profile");
+}
+
+function pickOfficialCost(
+  sources: Array<MetaActionStat[] | undefined>,
+  predicate: (actionType: string) => boolean,
+): number {
+  for (const actions of sources) {
+    for (const action of actions ?? []) {
+      if (predicate(action.action_type)) return costValue(action);
+    }
+  }
+  return 0;
 }
 
 function maxActionValueWhere(
@@ -410,6 +426,24 @@ function buildConversionDetails(
   actions: MetaActionStat[] | undefined,
   conversions: MetaActionStat[] | undefined,
 ): { breakdown: Record<string, number>; counted: CountedConversion[] } {
+  const officialConversions = (conversions ?? [])
+    .map((a) => ({ action: a, classification: classifyOfficialConversion(a.action_type), value: actionValue(a) }))
+    .filter((item): item is { action: MetaActionStat; classification: ConversionClassification; value: number } => Boolean(item.classification) && item.value > 0);
+
+  if (officialConversions.length > 0) {
+    const out: Record<string, number> = {};
+    const counted: CountedConversion[] = [];
+    for (const item of officialConversions) {
+      out[item.classification.bucket] = (out[item.classification.bucket] ?? 0) + item.value;
+      counted.push({
+        actionType: item.action.action_type,
+        bucket: item.classification.bucket,
+        value: item.value,
+      });
+    }
+    return { breakdown: out, counted };
+  }
+
   type Group = {
     aggregateMax: number;
     aggregateBucket: string | null;
@@ -418,7 +452,7 @@ function buildConversionDetails(
   };
   const groups: Record<string, Group> = {};
 
-  for (const a of [...(actions ?? []), ...(conversions ?? [])]) {
+  for (const a of actions ?? []) {
     const classification = classifyConversion(a.action_type);
     if (!classification) continue;
     const v = actionValue(a);
@@ -482,142 +516,27 @@ function buildConversionDetails(
   return { breakdown: out, counted };
 }
 
-async function fetchProfileVisitFallback(params: {
-  token: string;
-  externalAccountId: string;
-  datePreset: string;
-}): Promise<ProfileVisitFallback> {
-  const rows: Array<{
-    adsetId: string;
-    adsetName: string;
-    campaignName: string;
-    spend: number;
-    linkClicks: number;
-    explicitProfileVisits: number;
-  }> = [];
-  let insightsNext: string | undefined = (() => {
-    const url = new URL(`${GRAPH}/act_${params.externalAccountId}/insights`);
-    url.searchParams.set(
-      "fields",
-      [
-        "adset_id",
-        "adset_name",
-        "campaign_name",
-        "spend",
-        "inline_link_clicks",
-        "actions",
-        "conversions",
-      ].join(","),
-    );
-    url.searchParams.set("level", "adset");
-    url.searchParams.set("date_preset", params.datePreset);
-    url.searchParams.set("use_unified_attribution_setting", "true");
-    url.searchParams.set("limit", "500");
-    url.searchParams.set("access_token", params.token);
-    return url.toString();
-  })();
-
-  while (insightsNext) {
-    const res = await fetch(insightsNext);
-    if (!res.ok) return { profileVisits: 0, spend: 0 };
-    const json = (await res.json()) as {
-      data?: Array<{
-        adset_id?: string;
-        adset_name?: string;
-        campaign_name?: string;
-        spend?: string;
-        inline_link_clicks?: string;
-        actions?: MetaActionStat[];
-        conversions?: MetaActionStat[];
-      }>;
-      paging?: { next?: string };
-    };
-    for (const row of json.data ?? []) {
-      if (!row.adset_id) continue;
-      const explicitProfileVisits = maxActionValueWhere([row.actions, row.conversions], isProfileVisitType);
-      rows.push({
-        adsetId: row.adset_id,
-        adsetName: row.adset_name ?? "",
-        campaignName: row.campaign_name ?? "",
-        spend: Number(row.spend || 0),
-        linkClicks: Number(row.inline_link_clicks || 0),
-        explicitProfileVisits,
-      });
-    }
-    insightsNext = json.paging?.next;
-  }
-
-  const explicitProfileVisits = rows.reduce((sum, row) => sum + row.explicitProfileVisits, 0);
-  if (explicitProfileVisits > 0) {
-    return {
-      profileVisits: explicitProfileVisits,
-      spend: rows.reduce((sum, row) => sum + (row.explicitProfileVisits > 0 ? row.spend : 0), 0),
-    };
-  }
-
-  const profileAdsetIds = await fetchProfileVisitAdsetIds({
-    token: params.token,
-    adsetIds: rows.map((row) => row.adsetId),
-  });
-
-  let profileVisits = 0;
-  let spend = 0;
-  for (const row of rows) {
-    const rowLooksLikeProfileVisit = [row.adsetName, row.campaignName]
-      .join(" ")
-      .toLowerCase()
-      .match(/visita(s)?\s+(ao\s+)?perfil|visit(a|as)?\s+(ao\s+)?perfil|profile\s*visit|instagram\s*profile|ig\s*profile/);
-    if (!profileAdsetIds.has(row.adsetId) && !rowLooksLikeProfileVisit) continue;
-    profileVisits += row.linkClicks;
-    spend += row.spend;
-  }
-
-  return { profileVisits, spend };
-}
-
-async function fetchProfileVisitAdsetIds(params: {
-  token: string;
-  adsetIds: string[];
-}): Promise<Set<string>> {
-  const out = new Set<string>();
-  const uniqueIds = [...new Set(params.adsetIds)].filter(Boolean);
-  for (let i = 0; i < uniqueIds.length; i += 50) {
-    const ids = uniqueIds.slice(i, i + 50);
-    const url = new URL(`${GRAPH}/`);
-    url.searchParams.set("ids", ids.join(","));
-    url.searchParams.set("fields", "id,name,optimization_goal,destination_type,promoted_object,campaign{id,name,objective}");
-    url.searchParams.set("access_token", params.token);
-    const res = await fetch(url.toString());
-    if (!res.ok) continue;
-    const json = (await res.json()) as Record<string, {
-      id?: string;
-      name?: string;
-      optimization_goal?: string;
-      destination_type?: string;
-      promoted_object?: Record<string, unknown>;
-      campaign?: { id?: string; name?: string; objective?: string };
-    }>;
-    for (const [id, adset] of Object.entries(json)) {
-      const haystack = [
-        adset.name,
-        adset.optimization_goal,
-        adset.destination_type,
-        JSON.stringify(adset.promoted_object ?? {}),
-        adset.campaign?.name,
-        adset.campaign?.objective,
-      ].join(" ").toLowerCase();
-      if (
-        haystack.includes("visit_instagram_profile")
-        || haystack.includes("instagram_profile")
-        || haystack.includes("ig_profile")
-        || haystack.includes("profile_visit")
-        || /visit(a|as)?\s+(ao\s+)?perfil/.test(haystack)
-      ) {
-        out.add(id);
-      }
-    }
-  }
-  return out;
+function classifyOfficialConversion(actionType: string): ConversionClassification | null {
+  const t = actionType.toLowerCase();
+  const excluded = [
+    "link_click",
+    "landing_page_view",
+    "post_engagement",
+    "page_engagement",
+    "video_view",
+    "view_content",
+    "add_to_cart",
+    "initiate_checkout",
+    "search",
+    "profile_visit",
+    "ig_profile_visit",
+  ];
+  if (excluded.some((term) => t.includes(term))) return null;
+  return classifyConversion(actionType) ?? {
+    family: actionType,
+    bucket: t.includes("custom") ? "Conversões personalizadas" : "Outras conversões",
+    aggregate: false,
+  };
 }
 
 
@@ -644,6 +563,9 @@ export async function fetchAdAccountInsights(params: {
       "inline_link_click_ctr",
       "actions",
       "conversions",
+      "cost_per_action_type",
+      "cost_per_conversion",
+      "cost_per_action_result",
       "action_values",
       "conversion_values",
       "purchase_roas",
@@ -672,6 +594,9 @@ export async function fetchAdAccountInsights(params: {
       inline_link_click_ctr?: string;
       actions?: MetaActionStat[];
       conversions?: MetaActionStat[];
+      cost_per_action_type?: MetaActionStat[];
+      cost_per_conversion?: MetaActionStat[];
+      cost_per_action_result?: MetaActionStat[];
       action_values?: MetaActionStat[];
       conversion_values?: MetaActionStat[];
       purchase_roas?: MetaActionStat[];
@@ -695,16 +620,15 @@ export async function fetchAdAccountInsights(params: {
   const landing_page_views = sumActions(row.actions, LPV_TYPES);
   const purchase_value = sumActions(row.action_values, PURCHASE_TYPES);
   const accountProfileVisits = maxActionValueWhere([row.actions, row.conversions], isProfileVisitType);
-  const profileFallback = await fetchProfileVisitFallback({ token, externalAccountId, datePreset });
-  const profile_visits = Math.max(accountProfileVisits, profileFallback.profileVisits);
+  const profile_visits = accountProfileVisits;
   const page_engagement = sumActions(row.actions, PAGE_ENGAGEMENT_TYPES);
   const post_engagement = sumActions(row.actions, POST_ENGAGEMENT_TYPES);
   const video_views = sumActions(row.actions, VIDEO_VIEW_TYPES);
-  const cost_per_profile_visit = profile_visits > 0
-    ? (profileFallback.profileVisits > accountProfileVisits && profileFallback.spend > 0
-      ? profileFallback.spend / profile_visits
-      : spend / profile_visits)
-    : 0;
+  const officialProfileVisitCost = pickOfficialCost(
+    [row.cost_per_action_type, row.cost_per_conversion],
+    isProfileVisitType,
+  );
+  const cost_per_profile_visit = profile_visits > 0 ? (officialProfileVisitCost || spend / profile_visits) : 0;
 
   // Detailed breakdown by conversion category (auto-detected from Meta actions).
   const conversionDetails = buildConversionDetails(row.actions, row.conversions);
@@ -712,13 +636,17 @@ export async function fetchAdAccountInsights(params: {
   // Total conversions = sum of every final-conversion bucket (no duplication).
   const conversions = Object.values(conversions_breakdown).reduce((s, v) => s + v, 0);
   const results = conversions;
+  const officialConversionCost = pickOfficialCost(
+    [row.cost_per_conversion, row.cost_per_action_type],
+    (actionType) => Boolean(classifyOfficialConversion(actionType)),
+  );
 
   const roasEntry = row.purchase_roas?.find((r) => r.action_type === "omni_purchase")
     ?? row.purchase_roas?.[0];
   const roas = roasEntry ? Number(roasEntry.value || 0) : (spend > 0 ? purchase_value / spend : 0);
 
   const cost_per_landing_page_view = landing_page_views > 0 ? spend / landing_page_views : 0;
-  const cost_per_result = results > 0 ? spend / results : 0;
+  const cost_per_result = results > 0 ? (officialConversionCost || spend / results) : 0;
 
   return {
     spend,
@@ -749,7 +677,7 @@ export async function fetchAdAccountInsights(params: {
     post_engagement,
     video_views,
     conversions,
-    cost_per_conversion: conversions > 0 ? spend / conversions : 0,
+    cost_per_conversion: conversions > 0 ? (officialConversionCost || spend / conversions) : 0,
     conversions_breakdown,
   };
 }
