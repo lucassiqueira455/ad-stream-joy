@@ -89,13 +89,12 @@ const METRICS: MetricDef[] = [
 
   { key: "conversions", label: "Conversões", icon: Trophy, format: "number", group: "Conversões", get: (t) => t.conversions },
   { key: "cost_per_conversion", label: "Custo por conversão", icon: DollarSign, format: "currency", group: "Conversões", get: (t) => t.cost_per_conversion },
-  { key: "leads", label: "Leads", icon: UserRound, format: "number", group: "Conversões", get: (t) => t.leads },
-  { key: "messaging", label: "Mensagens", icon: MessageCircle, format: "number", group: "Conversões", get: (t) => t.messaging_conversations },
   { key: "purchases", label: "Compras", icon: ShoppingCart, format: "number", group: "Conversões", get: (t) => t.purchases },
   { key: "purchase_value", label: "Valor de conversão", icon: DollarSign, format: "currency", group: "Conversões", get: (t) => t.purchase_value },
   { key: "roas", label: "ROAS", icon: BarChart3, format: "decimal", group: "Conversões", get: (t) => t.roas },
   { key: "atc", label: "Adições ao carrinho", icon: ShoppingCart, format: "number", group: "Conversões", get: (t) => t.add_to_cart },
   { key: "ic", label: "Checkouts iniciados", icon: ShoppingCart, format: "number", group: "Conversões", get: (t) => t.initiate_checkout },
+
 
   { key: "profile_visits", label: "Visitas ao perfil", icon: UserRound, format: "number", group: "Engajamento", get: (t) => t.profile_visits },
   { key: "cost_per_profile_visit", label: "Custo por visita ao perfil", icon: DollarSign, format: "currency", group: "Engajamento", get: (t) => t.cost_per_profile_visit },
