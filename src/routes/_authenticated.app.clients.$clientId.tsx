@@ -223,7 +223,10 @@ function ClientDashboard() {
         </div>
       </section>
 
+      <ShareReportCard clientId={clientId} />
+
       <ClientMetrics clientId={clientId} hasAccounts={assigned.length > 0} />
+
     </div>
   );
 }
