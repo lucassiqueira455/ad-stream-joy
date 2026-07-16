@@ -41,26 +41,7 @@ function PublicReport() {
   const { data } = useSuspenseQuery(reportQuery(token));
 
 
-  if (isLoading) {
-    return (
-      <div className="grid min-h-screen place-items-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
-  if (isError || !data) {
-    return (
-      <div className="grid min-h-screen place-items-center bg-background p-6 text-center">
-        <div>
-          <h1 className="font-display text-2xl font-semibold">Link inválido</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Este link de relatório é inválido ou foi desativado.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   const { client, allowDateChange, metrics } = data;
   const hasAccounts = (metrics?.accounts?.length ?? 0) > 0;
