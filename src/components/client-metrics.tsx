@@ -147,7 +147,7 @@ function formatMetric(def: MetricDef, value: number, currency: string | null): s
   }
 }
 
-export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; hasAccounts: boolean }) {
+export function ClientMetrics({ clientId, hasAccounts, publicToken, allowDateChange = true }: { clientId: string; hasAccounts: boolean; publicToken?: string; allowDateChange?: boolean }) {
   const [datePreset, setDatePreset] = useState<DatePreset>("last_30d");
   const [selected, setSelected] = useState<string[]>(DEFAULT_SELECTED);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -167,13 +167,21 @@ export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; has
   }, [selected]);
 
   const fetchMetrics = useServerFn(getClientMetrics);
+  const fetchPublic = useServerFn(getPublicReport);
   const query = useQuery({
-    queryKey: ["client-metrics", clientId, datePreset],
-    queryFn: () => fetchMetrics({ data: { clientId, datePreset } }),
+    queryKey: ["client-metrics", clientId, datePreset, publicToken ?? "auth"],
+    queryFn: async () => {
+      if (publicToken) {
+        const r = await fetchPublic({ data: { token: publicToken, datePreset } });
+        return r.metrics;
+      }
+      return fetchMetrics({ data: { clientId, datePreset } });
+    },
     enabled: hasAccounts,
     staleTime: 0,
     refetchOnMount: "always",
   });
+
 
   const totals = query.data?.totals ?? null;
   const currency = query.data?.currency ?? null;
