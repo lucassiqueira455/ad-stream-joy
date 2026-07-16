@@ -224,15 +224,18 @@ export function ClientMetrics({ clientId, hasAccounts, publicToken, allowDateCha
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={datePreset}
-            onChange={(e) => setDatePreset(e.target.value as DatePreset)}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
-          >
-            {DATE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+          {allowDateChange && (
+            <select
+              value={datePreset}
+              onChange={(e) => setDatePreset(e.target.value as DatePreset)}
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            >
+              {DATE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          )}
+
           <div className="relative">
             <button
               onClick={() => setPickerOpen((v) => !v)}
