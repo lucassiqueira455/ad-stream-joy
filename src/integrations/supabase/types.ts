@@ -116,6 +116,47 @@ export type Database = {
         }
         Relationships: []
       }
+      client_shares: {
+        Row: {
+          active: boolean
+          allow_date_change: boolean
+          client_id: string
+          created_at: string
+          id: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          allow_date_change?: boolean
+          client_id: string
+          created_at?: string
+          id?: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          allow_date_change?: boolean
+          client_id?: string
+          created_at?: string
+          id?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_shares_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           brand_color: string
