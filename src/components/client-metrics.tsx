@@ -8,7 +8,6 @@ import {
   Gauge,
   Heart,
   Loader2,
-  MessageCircle,
   MousePointerClick,
   Percent,
   PlayCircle,
@@ -22,7 +21,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { getClientMetrics } from "@/lib/ads-connections.functions";
+import { getPublicReport } from "@/lib/shares.functions";
 import { MetricCard } from "@/components/metric-card";
+
 
 type DatePreset =
   | "today"
