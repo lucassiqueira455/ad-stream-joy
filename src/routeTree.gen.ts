@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth.index'
+import { Route as ReportTokenRouteImport } from './routes/report.$token'
 import { Route as AuthSignupRouteImport } from './routes/auth.signup'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated.app'
@@ -41,6 +42,11 @@ const AuthIndexRoute = AuthIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthRoute,
+} as any)
+const ReportTokenRoute = ReportTokenRouteImport.update({
+  id: '/report/$token',
+  path: '/report/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthSignupRoute = AuthSignupRouteImport.update({
   id: '/signup',
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AuthenticatedAppRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/report/$token': typeof ReportTokenRoute
   '/auth/': typeof AuthIndexRoute
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/report/$token': typeof ReportTokenRoute
   '/auth': typeof AuthIndexRoute
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/report/$token': typeof ReportTokenRoute
   '/auth/': typeof AuthIndexRoute
   '/_authenticated/app/reports': typeof AuthenticatedAppReportsRoute
   '/_authenticated/app/settings': typeof AuthenticatedAppSettingsRoute
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth/callback'
     | '/auth/signup'
+    | '/report/$token'
     | '/auth/'
     | '/app/reports'
     | '/app/settings'
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth/callback'
     | '/auth/signup'
+    | '/report/$token'
     | '/auth'
     | '/app/reports'
     | '/app/settings'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app'
     | '/auth/callback'
     | '/auth/signup'
+    | '/report/$token'
     | '/auth/'
     | '/_authenticated/app/reports'
     | '/_authenticated/app/settings'
@@ -181,6 +193,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
+  ReportTokenRoute: typeof ReportTokenRoute
   ApiAuthMetaCallbackRoute: typeof ApiAuthMetaCallbackRoute
 }
 
@@ -213,6 +226,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/'
       preLoaderRoute: typeof AuthIndexRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/report/$token': {
+      id: '/report/$token'
+      path: '/report/$token'
+      fullPath: '/report/$token'
+      preLoaderRoute: typeof ReportTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/auth/signup': {
       id: '/auth/signup'
@@ -329,6 +349,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
+  ReportTokenRoute: ReportTokenRoute,
   ApiAuthMetaCallbackRoute: ApiAuthMetaCallbackRoute,
 }
 export const routeTree = rootRouteImport

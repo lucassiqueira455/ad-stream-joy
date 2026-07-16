@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { Loader2 } from "lucide-react";
 import { ClientMetrics } from "@/components/client-metrics";
 import { Logo } from "@/components/logo";
 import { getPublicReport } from "@/lib/shares.functions";
@@ -10,18 +8,14 @@ import { initialsFromName } from "@/lib/mock-data";
 const reportQuery = (token: string) =>
   queryOptions({
     queryKey: ["public-report", token],
-    queryFn: async () => {
-      // Fetch initial "shell" data (client + config); the metrics grid
-      // has its own query hooked to date preset changes.
-      return getPublicReport({ data: { token } });
-    },
+    queryFn: () => getPublicReport({ data: { token } }),
     staleTime: 0,
   });
 
 export const Route = createFileRoute("/report/$token")({
   ssr: false,
   loader: ({ params, context }) =>
-    context.queryClient.ensureQueryData(reportQuery(params.token)).catch(() => null),
+    context.queryClient.ensureQueryData(reportQuery(params.token)),
   errorComponent: () => (
     <div className="grid min-h-screen place-items-center bg-background p-6 text-center">
       <div>
@@ -44,12 +38,8 @@ export const Route = createFileRoute("/report/$token")({
 
 function PublicReport() {
   const { token } = Route.useParams();
-  const fetchPublic = useServerFn(getPublicReport);
-  const { data, isLoading, isError } = useSuspenseQuery({
-    queryKey: ["public-report", token],
-    queryFn: () => fetchPublic({ data: { token } }),
-    staleTime: 0,
-  });
+  const { data } = useSuspenseQuery(reportQuery(token));
+
 
   if (isLoading) {
     return (
