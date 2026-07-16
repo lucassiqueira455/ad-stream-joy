@@ -1,85 +1,86 @@
 
-# Plano — Plataforma de Relatórios de Tráfego Pago
+## 1. Simplificar métricas
 
-Um app estilo Reportei/Criativvo: você cria clientes, conecta as contas de anúncio de Meta Ads e Google Ads de cada um, e gera dashboards + relatórios em PDF ou link público.
+Remover as métricas **Leads** e **Mensagens** do painel — apenas "Conversões" permanece como métrica unificada.
 
-## Antes de começar — o que você precisa providenciar
+- `src/components/client-metrics.tsx`: remover entradas `leads` e `messaging` de `METRICS`, remover ícones não usados. Manter o breakdown detalhado (que já mostra origem) intacto.
+- `src/lib/ads-connections.functions.ts` / `src/lib/meta.server.ts`: manter os campos no backend (usados no breakdown), só ocultar na UI. Não mexer na lógica de agregação.
 
-As APIs de Meta e Google Ads não são abertas: cada agência precisa de um App próprio aprovado. Vou te guiar em cada passo depois, mas em resumo:
+## 2. Compartilhamento público de relatórios por link
 
-**Meta Ads (Facebook/Instagram)**
-1. Criar conta em `developers.facebook.com` e criar um **App** do tipo "Business".
-2. Adicionar o produto **Marketing API** ao app.
-3. Guardar o `App ID` e o `App Secret`.
-4. Configurar a **URL de callback OAuth** (eu te dou depois de criar o app).
-5. Para uso além das suas próprias contas, o app precisa passar por **App Review** pedindo a permissão `ads_read` (leva alguns dias). Enquanto isso, funciona para contas em que você é admin ou está listado como tester.
+### Modelo de dados (nova migration)
 
-**Google Ads**
-1. Criar projeto no `console.cloud.google.com`, habilitar a **Google Ads API**.
-2. Criar credenciais OAuth 2.0 (Client ID + Client Secret) e cadastrar a URL de callback.
-3. Solicitar um **Developer Token** em `ads.google.com` (aba API Center) — vem em modo teste primeiro; para produção precisa de "Basic access" (formulário rápido).
-4. Idealmente ter uma **Manager Account (MCC)** para acessar contas dos clientes.
+Nova tabela `public.client_shares`:
 
-**No app, você vai salvar como secrets:** `META_APP_ID`, `META_APP_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_ADS_DEVELOPER_TOKEN`.
+```
+id uuid pk
+client_id uuid fk clients(id) on delete cascade
+user_id uuid  -- dono (para RLS admin)
+token text unique not null  -- 32+ bytes, base64url
+active boolean default true
+allow_date_change boolean default true
+created_at, updated_at
+```
 
-## Arquitetura
+- RLS: admin (dono) gerencia via `auth.uid() = user_id`.
+- **Sem** política pública na tabela — leitura pública passa pelo servidor via service role, validando token + active.
+- GRANTs padrão + `service_role` all.
 
-- **Auth**: e-mail/senha + Google (Lovable Cloud).
-- **Multi-tenant leve**: cada usuário logado é dono dos próprios clientes e conexões.
-- **Modelo de dados** (tabelas principais):
-  - `profiles` — dados do usuário logado.
-  - `clients` — clientes da agência (nome, logo, cor de marca).
-  - `ad_accounts` — conta de anúncio vinculada a um cliente (`platform`: meta/google, `external_id`, `name`, `access_token` cifrado, `refresh_token`, `expires_at`).
-  - `reports` — relatórios salvos (cliente, período, métricas escolhidas, layout).
-  - `report_shares` — token público para link somente-leitura.
-- **RLS**: tudo escopado por `owner_user_id`; `report_shares` acessível por token sem auth.
+### Backend (server functions em `src/lib/shares.functions.ts`)
 
-## Escopo do MVP (o que entrego)
+Autenticadas (admin gerencia):
+- `getClientShare({ clientId })` — retorna share existente (cria on-demand? não: cria só via createShare)
+- `createOrRegenerateShare({ clientId })` — gera novo token (crypto.randomBytes(32) → base64url), upsert por clientId, invalidando anterior
+- `setShareActive({ clientId, active })`
+- `setShareAllowDateChange({ clientId, allow })`
 
-### Etapa 1 — Fundação (esta primeira leva)
-1. Design system escuro/moderno estilo dashboard analytics.
-2. Auth (login/cadastro/Google).
-3. CRUD de clientes (nome, logo, cor).
-4. Layout do app: sidebar com lista de clientes, área principal do dashboard.
-5. Dashboard funcionando com **dados mock** para você validar a UX antes de plugar as APIs.
+Rota pública (server route) `src/routes/api/public/report/$token.ts`:
+- Valida token via `supabaseAdmin`; se inativo/inexistente → 404.
+- Retorna `{ client: {id,name,logo,brand_color}, allowDateChange }`.
 
-Nessa etapa não vou pedir os secrets ainda — primeiro validamos o produto.
+Server function pública (sem `requireSupabaseAuth`) `getPublicReport({ token, datePreset })`:
+- Valida token via `supabaseAdmin`, resolve `clientId`, chama a mesma lógica de agregação já usada em `getClientMetrics` (extrair função pura `computeClientMetrics(supabase, clientId, datePreset)` compartilhada; a versão pública usa `supabaseAdmin`, contornando RLS somente após validar o token).
+- Se `allow_date_change` é false, força `datePreset` do banco (armazenar? — não pedido; deixamos default `last_30d` quando desabilitado).
 
-### Etapa 2 — Integração Meta Ads
-1. Fluxo OAuth do Meta (conectar conta de anúncio a um cliente).
-2. Server functions que puxam da Marketing API:
-   - Campanhas, conjuntos, anúncios
-   - Métricas: gasto, impressões, alcance, cliques, CPC, CPM, CTR, frequência
-   - Conversões e eventos (mensagens iniciadas, leads, compras, valor de conversão, ROAS)
-   - Breakdown por dia, por posicionamento, por dispositivo, por idade/gênero
-3. Cache das métricas em tabela `metrics_daily` para não estourar rate limit.
+### Rotas frontend
 
-### Etapa 3 — Integração Google Ads
-1. OAuth do Google Ads + seleção de conta (via MCC).
-2. Server functions puxando via GAQL:
-   - Campanhas, grupos de anúncios, palavras-chave
-   - Métricas: custo, cliques, impressões, CTR, CPC médio, conversões, custo/conversão, valor de conversão, ROAS
-   - Search terms, quality score
-3. Mesmo cache em `metrics_daily`.
+- **Admin**: em `_authenticated.app.clients.$clientId.tsx`, adicionar seção "Compartilhamento":
+  - Status ativo/inativo (badge)
+  - Campo readonly com URL `${origin}/report/<token>`
+  - Botões: Copiar Link, Regenerar Link (confirmação — invalida antigo), Desativar/Ativar, Toggle "Permitir alterar período"
+- **Público** (fora de `_authenticated`): novo arquivo `src/routes/report.$token.tsx`
+  - **Sem** `AppShell`. Layout próprio minimalista:
+    - Header: logo da plataforma + logo/nome do cliente + período
+    - Seletor de período (somente se `allowDateChange`)
+    - Reusa `ClientMetrics` em modo "público" (nova prop `publicToken?: string` que troca o server fn de `getClientMetrics` para `getPublicReport`)
+  - Sem menu, sem navegação admin, somente leitura.
 
-### Etapa 4 — Relatórios
-1. Construtor de relatório: escolher cliente, período, quais blocos incluir (visão geral, campanhas, criativos, funil, etc.).
-2. **Exportar PDF** (renderização server-side com layout de marca do cliente).
-3. **Link público compartilhável** (`/r/:token`) com view somente-leitura.
-4. Comparação de período (vs. período anterior).
+### Segurança
 
-## Detalhes técnicos
+- Token 32 bytes aleatórios via `crypto.randomBytes` (server).
+- Validação server-side em toda chamada pública.
+- Sem IDs sequenciais na URL.
+- `supabaseAdmin` só é carregado dentro do handler após validar token.
+- Nenhuma escrita pelo endpoint público.
 
-- Stack: TanStack Start + Lovable Cloud (Postgres + Auth + Storage para logos/PDFs).
-- OAuth callbacks: rotas em `src/routes/api/auth/meta/callback.ts` e `src/routes/api/auth/google/callback.ts`.
-- Tokens de acesso ficam **cifrados** no banco (chave em secret `TOKEN_ENCRYPTION_KEY`).
-- Refresh automático de tokens em cada chamada.
-- Chamadas às APIs Meta/Google feitas em `createServerFn` — nunca do browser.
-- PDF: gerado via HTML→PDF em server route (biblioteca compatível com Workers).
-- Rate-limit e retry com backoff nas chamadas externas.
+## 3. Arquivos afetados
 
-## O que quero confirmar antes de começar
+Novos:
+- `supabase/migrations/<ts>_client_shares.sql`
+- `src/lib/shares.functions.ts`
+- `src/lib/metrics.server.ts` (extrai `computeClientMetrics` de `ads-connections.functions.ts`)
+- `src/routes/report.$token.tsx`
+- `src/components/share-report-card.tsx` (UI admin do compartilhamento)
 
-Se estiver tudo certo, começo agora pela **Etapa 1** (fundação + design + mocks). Depois que você validar a cara do produto, ativamos Lovable Cloud, cria a auth e as tabelas, e passamos pra Etapa 2 (Meta) — nesse momento eu te mando o passo a passo para criar o App no Meta for Developers e te peço os secrets via formulário seguro. Idem para Google na Etapa 3.
+Editados:
+- `src/components/client-metrics.tsx` (remover leads/messaging; aceitar prop opcional para usar server fn público)
+- `src/lib/ads-connections.functions.ts` (usar `computeClientMetrics`)
+- `src/routes/_authenticated.app.clients.$clientId.tsx` (montar `ShareReportCard`)
 
-Confirma que posso seguir?
+## Notas técnicas
+
+- O client store `client-metrics-selection-v2` continua servindo; leads/messaging desaparecem naturalmente pois filtro `METRICS.some(m => m.key === k)` remove chaves órfãs.
+- `getPublicReport` é uma `createServerFn` **sem** middleware de auth — é um endpoint público válido (o token é a autenticação).
+- O `origin` para copiar link vem de `window.location.origin` no cliente.
+
+Pronto para implementar?

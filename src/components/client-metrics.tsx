@@ -8,7 +8,6 @@ import {
   Gauge,
   Heart,
   Loader2,
-  MessageCircle,
   MousePointerClick,
   Percent,
   PlayCircle,
@@ -22,7 +21,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { getClientMetrics } from "@/lib/ads-connections.functions";
+import { getPublicReport } from "@/lib/shares.functions";
 import { MetricCard } from "@/components/metric-card";
+
 
 type DatePreset =
   | "today"
@@ -88,13 +89,12 @@ const METRICS: MetricDef[] = [
 
   { key: "conversions", label: "Conversões", icon: Trophy, format: "number", group: "Conversões", get: (t) => t.conversions },
   { key: "cost_per_conversion", label: "Custo por conversão", icon: DollarSign, format: "currency", group: "Conversões", get: (t) => t.cost_per_conversion },
-  { key: "leads", label: "Leads", icon: UserRound, format: "number", group: "Conversões", get: (t) => t.leads },
-  { key: "messaging", label: "Mensagens", icon: MessageCircle, format: "number", group: "Conversões", get: (t) => t.messaging_conversations },
   { key: "purchases", label: "Compras", icon: ShoppingCart, format: "number", group: "Conversões", get: (t) => t.purchases },
   { key: "purchase_value", label: "Valor de conversão", icon: DollarSign, format: "currency", group: "Conversões", get: (t) => t.purchase_value },
   { key: "roas", label: "ROAS", icon: BarChart3, format: "decimal", group: "Conversões", get: (t) => t.roas },
   { key: "atc", label: "Adições ao carrinho", icon: ShoppingCart, format: "number", group: "Conversões", get: (t) => t.add_to_cart },
   { key: "ic", label: "Checkouts iniciados", icon: ShoppingCart, format: "number", group: "Conversões", get: (t) => t.initiate_checkout },
+
 
   { key: "profile_visits", label: "Visitas ao perfil", icon: UserRound, format: "number", group: "Engajamento", get: (t) => t.profile_visits },
   { key: "cost_per_profile_visit", label: "Custo por visita ao perfil", icon: DollarSign, format: "currency", group: "Engajamento", get: (t) => t.cost_per_profile_visit },
@@ -147,7 +147,7 @@ function formatMetric(def: MetricDef, value: number, currency: string | null): s
   }
 }
 
-export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; hasAccounts: boolean }) {
+export function ClientMetrics({ clientId, hasAccounts, publicToken, allowDateChange = true }: { clientId: string; hasAccounts: boolean; publicToken?: string; allowDateChange?: boolean }) {
   const [datePreset, setDatePreset] = useState<DatePreset>("last_30d");
   const [selected, setSelected] = useState<string[]>(DEFAULT_SELECTED);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -167,13 +167,21 @@ export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; has
   }, [selected]);
 
   const fetchMetrics = useServerFn(getClientMetrics);
+  const fetchPublic = useServerFn(getPublicReport);
   const query = useQuery({
-    queryKey: ["client-metrics", clientId, datePreset],
-    queryFn: () => fetchMetrics({ data: { clientId, datePreset } }),
+    queryKey: ["client-metrics", clientId, datePreset, publicToken ?? "auth"],
+    queryFn: async () => {
+      if (publicToken) {
+        const r = await fetchPublic({ data: { token: publicToken, datePreset } });
+        return r.metrics;
+      }
+      return fetchMetrics({ data: { clientId, datePreset } });
+    },
     enabled: hasAccounts,
     staleTime: 0,
     refetchOnMount: "always",
   });
+
 
   const totals = query.data?.totals ?? null;
   const currency = query.data?.currency ?? null;
@@ -216,15 +224,18 @@ export function ClientMetrics({ clientId, hasAccounts }: { clientId: string; has
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={datePreset}
-            onChange={(e) => setDatePreset(e.target.value as DatePreset)}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
-          >
-            {DATE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+          {allowDateChange && (
+            <select
+              value={datePreset}
+              onChange={(e) => setDatePreset(e.target.value as DatePreset)}
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            >
+              {DATE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          )}
+
           <div className="relative">
             <button
               onClick={() => setPickerOpen((v) => !v)}

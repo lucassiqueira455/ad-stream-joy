@@ -5,6 +5,8 @@ import { Link2, Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { PlatformBadge } from "@/components/platform-badge";
 import { ClientMetrics } from "@/components/client-metrics";
+import { ShareReportCard } from "@/components/share-report-card";
+
 import { supabase } from "@/integrations/supabase/client";
 import {
   listAdAccounts,
@@ -221,7 +223,10 @@ function ClientDashboard() {
         </div>
       </section>
 
+      <ShareReportCard clientId={clientId} />
+
       <ClientMetrics clientId={clientId} hasAccounts={assigned.length > 0} />
+
     </div>
   );
 }
