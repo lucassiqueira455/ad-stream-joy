@@ -189,4 +189,6 @@ export async function computeClientDashboard(supabase: SupabaseClient<any>, clie
     .slice(0, 10);
 
   return { ...base, series, topCampaigns, topAds, lastSyncedAt: Date.now() };
+}
+
 
