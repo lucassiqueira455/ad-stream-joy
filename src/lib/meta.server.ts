@@ -797,3 +797,220 @@ export async function fetchAdAccountInsights(params: {
   };
 }
 
+// ============= Dashboard-specific fetchers =============
+
+export type DailyPoint = {
+  date: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  ctr: number;
+  cpc: number;
+};
+
+export async function fetchAdAccountDaily(params: {
+  token: string;
+  externalAccountId: string;
+  datePreset?: string;
+}): Promise<DailyPoint[]> {
+  const { token, externalAccountId, datePreset = "last_30d" } = params;
+  const url = new URL(`${GRAPH}/act_${externalAccountId}/insights`);
+  url.searchParams.set(
+    "fields",
+    ["date_start", "spend", "impressions", "clicks", "inline_link_clicks", "actions", "conversions"].join(","),
+  );
+  url.searchParams.set("date_preset", datePreset);
+  url.searchParams.set("use_unified_attribution_setting", "true");
+  url.searchParams.set("time_increment", "1");
+  url.searchParams.set("level", "account");
+  url.searchParams.set("limit", "500");
+  url.searchParams.set("access_token", token);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`Meta daily insights failed: ${await res.text()}`);
+  const json = (await res.json()) as {
+    data?: Array<{
+      date_start?: string;
+      spend?: string;
+      impressions?: string;
+      clicks?: string;
+      inline_link_clicks?: string;
+      actions?: MetaActionStat[];
+      conversions?: MetaActionStat[];
+    }>;
+  };
+
+  return (json.data ?? []).map((row) => {
+    const spend = Number(row.spend || 0);
+    const impressions = Number(row.impressions || 0);
+    const clicks = Number(row.inline_link_clicks || row.clicks || 0);
+    const details = buildConversionDetails(row.actions, row.conversions);
+    const conversions = Object.values(details.breakdown).reduce((s, v) => s + v, 0);
+    return {
+      date: row.date_start ?? "",
+      spend,
+      impressions,
+      clicks,
+      conversions,
+      ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+      cpc: clicks > 0 ? spend / clicks : 0,
+    };
+  });
+}
+
+export type CampaignRow = {
+  campaign_id: string;
+  campaign_name: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  conversions: number;
+  cost_per_conversion: number;
+};
+
+export async function fetchAdAccountCampaigns(params: {
+  token: string;
+  externalAccountId: string;
+  datePreset?: string;
+}): Promise<CampaignRow[]> {
+  const { token, externalAccountId, datePreset = "last_30d" } = params;
+  const url = new URL(`${GRAPH}/act_${externalAccountId}/insights`);
+  url.searchParams.set(
+    "fields",
+    ["campaign_id", "campaign_name", "spend", "impressions", "clicks", "inline_link_clicks", "ctr", "cpc", "actions", "conversions"].join(","),
+  );
+  url.searchParams.set("date_preset", datePreset);
+  url.searchParams.set("use_unified_attribution_setting", "true");
+  url.searchParams.set("level", "campaign");
+  url.searchParams.set("limit", "200");
+  url.searchParams.set("access_token", token);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`Meta campaigns failed: ${await res.text()}`);
+  const json = (await res.json()) as {
+    data?: Array<{
+      campaign_id?: string;
+      campaign_name?: string;
+      spend?: string;
+      impressions?: string;
+      clicks?: string;
+      inline_link_clicks?: string;
+      ctr?: string;
+      cpc?: string;
+      actions?: MetaActionStat[];
+      conversions?: MetaActionStat[];
+    }>;
+  };
+
+  return (json.data ?? []).map((row) => {
+    const spend = Number(row.spend || 0);
+    const impressions = Number(row.impressions || 0);
+    const clicks = Number(row.inline_link_clicks || row.clicks || 0);
+    const details = buildConversionDetails(row.actions, row.conversions);
+    const conversions = Object.values(details.breakdown).reduce((s, v) => s + v, 0);
+    return {
+      campaign_id: row.campaign_id ?? "",
+      campaign_name: row.campaign_name ?? "—",
+      spend,
+      impressions,
+      clicks,
+      ctr: Number(row.ctr || 0),
+      cpc: clicks > 0 ? spend / clicks : Number(row.cpc || 0),
+      conversions,
+      cost_per_conversion: conversions > 0 ? spend / conversions : 0,
+    };
+  });
+}
+
+export type AdRow = {
+  ad_id: string;
+  ad_name: string;
+  campaign_name: string;
+  thumbnail_url: string | null;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  conversions: number;
+  cost_per_conversion: number;
+};
+
+export async function fetchAdAccountAds(params: {
+  token: string;
+  externalAccountId: string;
+  datePreset?: string;
+}): Promise<AdRow[]> {
+  const { token, externalAccountId, datePreset = "last_30d" } = params;
+  const url = new URL(`${GRAPH}/act_${externalAccountId}/insights`);
+  url.searchParams.set(
+    "fields",
+    ["ad_id", "ad_name", "campaign_name", "spend", "impressions", "clicks", "inline_link_clicks", "ctr", "actions", "conversions"].join(","),
+  );
+  url.searchParams.set("date_preset", datePreset);
+  url.searchParams.set("use_unified_attribution_setting", "true");
+  url.searchParams.set("level", "ad");
+  url.searchParams.set("limit", "100");
+  url.searchParams.set("access_token", token);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`Meta ads failed: ${await res.text()}`);
+  const json = (await res.json()) as {
+    data?: Array<{
+      ad_id?: string;
+      ad_name?: string;
+      campaign_name?: string;
+      spend?: string;
+      impressions?: string;
+      clicks?: string;
+      inline_link_clicks?: string;
+      ctr?: string;
+      actions?: MetaActionStat[];
+      conversions?: MetaActionStat[];
+    }>;
+  };
+
+  const rows = (json.data ?? []).map((row) => {
+    const spend = Number(row.spend || 0);
+    const impressions = Number(row.impressions || 0);
+    const clicks = Number(row.inline_link_clicks || row.clicks || 0);
+    const details = buildConversionDetails(row.actions, row.conversions);
+    const conversions = Object.values(details.breakdown).reduce((s, v) => s + v, 0);
+    return {
+      ad_id: row.ad_id ?? "",
+      ad_name: row.ad_name ?? "—",
+      campaign_name: row.campaign_name ?? "",
+      thumbnail_url: null as string | null,
+      spend,
+      impressions,
+      clicks,
+      ctr: Number(row.ctr || 0),
+      conversions,
+      cost_per_conversion: conversions > 0 ? spend / conversions : 0,
+    };
+  });
+
+  // Rank + fetch thumbnails for top 20 by conversions/spend
+  rows.sort((a, b) => (b.conversions - a.conversions) || (b.spend - a.spend));
+  const top = rows.slice(0, 20);
+
+  await Promise.all(
+    top.map(async (r) => {
+      if (!r.ad_id) return;
+      try {
+        const u = new URL(`${GRAPH}/${r.ad_id}`);
+        u.searchParams.set("fields", "creative{thumbnail_url,image_url}");
+        u.searchParams.set("access_token", token);
+        const res2 = await fetch(u.toString());
+        if (!res2.ok) return;
+        const j = (await res2.json()) as { creative?: { thumbnail_url?: string; image_url?: string } };
+        r.thumbnail_url = j.creative?.thumbnail_url ?? j.creative?.image_url ?? null;
+      } catch { /* noop */ }
+    }),
+  );
+
+  return top;
+}
+
