@@ -92,3 +92,20 @@ export const getClientMetrics = createServerFn({ method: "POST" })
     return computeClientMetrics(context.supabase, data.clientId, data.datePreset);
   });
 
+export const getClientDashboard = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      clientId: z.string().uuid(),
+      datePreset: z.enum([
+        "today", "yesterday", "last_3d", "last_7d", "last_14d", "last_28d",
+        "last_30d", "last_90d", "this_month", "last_month",
+      ]).default("last_30d"),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { computeClientDashboard } = await import("./metrics.server");
+    return computeClientDashboard(context.supabase, data.clientId, data.datePreset);
+  });
+
+

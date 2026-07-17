@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth.index'
 import { Route as ReportTokenRouteImport } from './routes/report.$token'
+import { Route as DashboardTokenRouteImport } from './routes/dashboard.$token'
 import { Route as AuthSignupRouteImport } from './routes/auth.signup'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated.app'
@@ -46,6 +47,11 @@ const AuthIndexRoute = AuthIndexRouteImport.update({
 const ReportTokenRoute = ReportTokenRouteImport.update({
   id: '/report/$token',
   path: '/report/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardTokenRoute = DashboardTokenRouteImport.update({
+  id: '/dashboard/$token',
+  path: '/dashboard/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthSignupRoute = AuthSignupRouteImport.update({
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AuthenticatedAppRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/dashboard/$token': typeof DashboardTokenRoute
   '/report/$token': typeof ReportTokenRoute
   '/auth/': typeof AuthIndexRoute
   '/app/reports': typeof AuthenticatedAppReportsRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/dashboard/$token': typeof DashboardTokenRoute
   '/report/$token': typeof ReportTokenRoute
   '/auth': typeof AuthIndexRoute
   '/app/reports': typeof AuthenticatedAppReportsRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/dashboard/$token': typeof DashboardTokenRoute
   '/report/$token': typeof ReportTokenRoute
   '/auth/': typeof AuthIndexRoute
   '/_authenticated/app/reports': typeof AuthenticatedAppReportsRoute
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth/callback'
     | '/auth/signup'
+    | '/dashboard/$token'
     | '/report/$token'
     | '/auth/'
     | '/app/reports'
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth/callback'
     | '/auth/signup'
+    | '/dashboard/$token'
     | '/report/$token'
     | '/auth'
     | '/app/reports'
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app'
     | '/auth/callback'
     | '/auth/signup'
+    | '/dashboard/$token'
     | '/report/$token'
     | '/auth/'
     | '/_authenticated/app/reports'
@@ -193,6 +205,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
+  DashboardTokenRoute: typeof DashboardTokenRoute
   ReportTokenRoute: typeof ReportTokenRoute
   ApiAuthMetaCallbackRoute: typeof ApiAuthMetaCallbackRoute
 }
@@ -232,6 +245,13 @@ declare module '@tanstack/react-router' {
       path: '/report/$token'
       fullPath: '/report/$token'
       preLoaderRoute: typeof ReportTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/$token': {
+      id: '/dashboard/$token'
+      path: '/dashboard/$token'
+      fullPath: '/dashboard/$token'
+      preLoaderRoute: typeof DashboardTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/signup': {
@@ -349,19 +369,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
+  DashboardTokenRoute: DashboardTokenRoute,
   ReportTokenRoute: ReportTokenRoute,
   ApiAuthMetaCallbackRoute: ApiAuthMetaCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

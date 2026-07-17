@@ -5,7 +5,9 @@ import { Link2, Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { PlatformBadge } from "@/components/platform-badge";
 import { ClientMetrics } from "@/components/client-metrics";
+import { ClientDashboardView } from "@/components/client-dashboard";
 import { ShareReportCard } from "@/components/share-report-card";
+
 
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -225,8 +227,39 @@ function ClientDashboard() {
 
       <ShareReportCard clientId={clientId} />
 
-      <ClientMetrics clientId={clientId} hasAccounts={assigned.length > 0} />
-
+      <ClientTabs clientId={clientId} hasAccounts={assigned.length > 0} />
     </div>
   );
 }
+
+function ClientTabs({ clientId, hasAccounts }: { clientId: string; hasAccounts: boolean }) {
+  const [tab, setTab] = useState<"report" | "dashboard">("report");
+  return (
+    <>
+      <div className="mt-8 inline-flex rounded-lg border border-border bg-card p-1">
+        <button
+          onClick={() => setTab("report")}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
+            tab === "report" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Relatório
+        </button>
+        <button
+          onClick={() => setTab("dashboard")}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
+            tab === "dashboard" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Dashboard
+        </button>
+      </div>
+      {tab === "report" ? (
+        <ClientMetrics clientId={clientId} hasAccounts={hasAccounts} />
+      ) : (
+        <ClientDashboardView clientId={clientId} hasAccounts={hasAccounts} />
+      )}
+    </>
+  );
+}
+

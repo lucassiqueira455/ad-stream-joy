@@ -123,3 +123,72 @@ export async function computeClientMetrics(supabase: SupabaseClient<any>, client
     currency: accounts[0].currency ?? null,
   };
 }
+
+// ============= Dashboard aggregation =============
+
+import type { CampaignRow, AdRow, DailyPoint } from "./meta.server";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function computeClientDashboard(supabase: SupabaseClient<any>, clientId: string, datePreset: DatePreset) {
+  const base = await computeClientMetrics(supabase, clientId, datePreset);
+  if (!base.totals || base.accounts.length === 0) {
+    return { ...base, series: [] as DailyPoint[], topCampaigns: [] as CampaignRow[], topAds: [] as AdRow[], lastSyncedAt: Date.now() };
+  }
+
+  const { fetchAdAccountDaily, fetchAdAccountCampaigns, fetchAdAccountAds } = await import("./meta.server");
+
+  const connectionIds = [...new Set(base.accounts.map((r) => r.account.connection_id))];
+  const { data: conns } = await supabase
+    .from("ad_platform_connections")
+    .select("id, access_token_encrypted")
+    .in("id", connectionIds);
+  const tokenMap = new Map(conns?.map((c) => [c.id, decryptToken(c.access_token_encrypted)]));
+
+  const daily: Record<string, DailyPoint> = {};
+  const campaigns: CampaignRow[] = [];
+  const ads: AdRow[] = [];
+
+  await Promise.all(
+    base.accounts.map(async (r) => {
+      if (!r.insights || r.account.platform !== "meta") return;
+      const token = tokenMap.get(r.account.connection_id);
+      if (!token) return;
+      try {
+        const [d, c, a] = await Promise.all([
+          fetchAdAccountDaily({ token, externalAccountId: r.account.external_account_id, datePreset }),
+          fetchAdAccountCampaigns({ token, externalAccountId: r.account.external_account_id, datePreset }),
+          fetchAdAccountAds({ token, externalAccountId: r.account.external_account_id, datePreset }),
+        ]);
+        for (const p of d) {
+          const cur = daily[p.date];
+          if (!cur) {
+            daily[p.date] = { ...p };
+          } else {
+            cur.spend += p.spend;
+            cur.impressions += p.impressions;
+            cur.clicks += p.clicks;
+            cur.conversions += p.conversions;
+            cur.ctr = cur.impressions > 0 ? (cur.clicks / cur.impressions) * 100 : 0;
+            cur.cpc = cur.clicks > 0 ? cur.spend / cur.clicks : 0;
+          }
+        }
+        campaigns.push(...c);
+        ads.push(...a);
+      } catch { /* per-account failure — skip */ }
+    }),
+  );
+
+  const series = Object.values(daily).sort((a, b) => a.date.localeCompare(b.date));
+  const topCampaigns = campaigns
+    .filter((c) => c.spend > 0 || c.conversions > 0)
+    .sort((a, b) => (b.conversions - a.conversions) || (b.spend - a.spend))
+    .slice(0, 10);
+  const topAds = ads
+    .filter((a) => a.spend > 0 || a.conversions > 0)
+    .sort((a, b) => (b.conversions - a.conversions) || (b.spend - a.spend))
+    .slice(0, 10);
+
+  return { ...base, series, topCampaigns, topAds, lastSyncedAt: Date.now() };
+}
+
+

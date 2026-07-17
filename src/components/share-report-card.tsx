@@ -9,6 +9,58 @@ import {
   setShareAllowDateChange,
 } from "@/lib/shares.functions";
 
+type Kind = "report" | "dashboard";
+
+function LinkRow({
+  label,
+  url,
+  onRegenerate,
+  regenerating,
+}: {
+  label: string;
+  url: string;
+  onRegenerate: () => void;
+  regenerating: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* noop */ }
+  };
+  return (
+    <div>
+      <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          readOnly
+          value={url}
+          onFocus={(e) => e.currentTarget.select()}
+          className="min-w-[240px] flex-1 rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs"
+        />
+        <button
+          onClick={copy}
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm hover:bg-accent"
+        >
+          {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+          {copied ? "Copiado" : "Copiar"}
+        </button>
+        <button
+          onClick={onRegenerate}
+          disabled={regenerating}
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-60"
+        >
+          {regenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+          Regenerar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function ShareReportCard({ clientId }: { clientId: string }) {
   const qc = useQueryClient();
   const fetchShare = useServerFn(getClientShare);
@@ -17,8 +69,6 @@ export function ShareReportCard({ clientId }: { clientId: string }) {
   const toggleAllowDate = useServerFn(setShareAllowDateChange);
 
   const [origin, setOrigin] = useState("");
-  const [copied, setCopied] = useState(false);
-
   useEffect(() => {
     if (typeof window !== "undefined") setOrigin(window.location.origin);
   }, []);
@@ -31,35 +81,25 @@ export function ShareReportCard({ clientId }: { clientId: string }) {
   const invalidate = () => qc.invalidateQueries({ queryKey: ["client-share", clientId] });
 
   const generateMutation = useMutation({
-    mutationFn: () => regen({ data: { clientId } }),
+    mutationFn: (kind: Kind | "both") => regen({ data: { clientId, kind } }),
     onSuccess: invalidate,
   });
-
   const activeMutation = useMutation({
     mutationFn: (active: boolean) => toggleActive({ data: { clientId, active } }),
     onSuccess: invalidate,
   });
-
   const dateMutation = useMutation({
     mutationFn: (allow: boolean) => toggleAllowDate({ data: { clientId, allow } }),
     onSuccess: invalidate,
   });
 
   const share = shareQuery.data;
-  const url = share ? `${origin}/report/${share.token}` : "";
+  const reportUrl = share?.token ? `${origin}/report/${share.token}` : "";
+  const dashboardUrl = share?.dashboard_token ? `${origin}/dashboard/${share.dashboard_token}` : "";
 
-  const copy = async () => {
-    if (!url) return;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch { /* noop */ }
-  };
-
-  const regenerate = async () => {
-    if (share && !confirm("Regenerar o link vai invalidar o atual. Continuar?")) return;
-    await generateMutation.mutateAsync();
+  const regenerate = async (kind: Kind | "both") => {
+    if (share && kind !== "both" && !confirm(`Regenerar o link de ${kind === "report" ? "Relatório" : "Dashboard"} vai invalidar o atual. Continuar?`)) return;
+    await generateMutation.mutateAsync(kind);
   };
 
   return (
@@ -70,9 +110,7 @@ export function ShareReportCard({ clientId }: { clientId: string }) {
         {share && (
           <span
             className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${
-              share.active
-                ? "bg-emerald-500/10 text-emerald-500"
-                : "bg-muted text-muted-foreground"
+              share.active ? "bg-emerald-500/10 text-emerald-500" : "bg-muted text-muted-foreground"
             }`}
           >
             {share.active ? "Ativo" : "Inativo"}
@@ -80,7 +118,7 @@ export function ShareReportCard({ clientId }: { clientId: string }) {
         )}
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        Gere um link público (somente leitura) para o cliente visualizar o relatório sem fazer login.
+        Gere links públicos (somente leitura) para o cliente ver os dados sem fazer login.
       </p>
 
       {shareQuery.isLoading ? (
@@ -90,38 +128,30 @@ export function ShareReportCard({ clientId }: { clientId: string }) {
       ) : !share ? (
         <div className="mt-4">
           <button
-            onClick={regenerate}
+            onClick={() => regenerate("both")}
             disabled={generateMutation.isPending}
             className="inline-flex items-center gap-2 rounded-lg gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow disabled:opacity-60"
           >
             {generateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
-            Gerar link de compartilhamento
+            Gerar links de compartilhamento
           </button>
         </div>
       ) : (
         <div className="mt-4 space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              readOnly
-              value={url}
-              onFocus={(e) => e.currentTarget.select()}
-              className="min-w-[280px] flex-1 rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs"
-            />
-            <button
-              onClick={copy}
-              className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm hover:bg-accent"
-            >
-              {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-              {copied ? "Copiado" : "Copiar Link"}
-            </button>
-            <button
-              onClick={regenerate}
-              disabled={generateMutation.isPending}
-              className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-60"
-            >
-              {generateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-              Regenerar
-            </button>
+          <LinkRow
+            label="Link do Relatório"
+            url={reportUrl}
+            onRegenerate={() => regenerate("report")}
+            regenerating={generateMutation.isPending && generateMutation.variables === "report"}
+          />
+          <LinkRow
+            label="Link do Dashboard"
+            url={dashboardUrl}
+            onRegenerate={() => regenerate("dashboard")}
+            regenerating={generateMutation.isPending && generateMutation.variables === "dashboard"}
+          />
+
+          <div className="flex flex-wrap items-center gap-4 border-t border-border pt-4">
             <button
               onClick={() => activeMutation.mutate(!share.active)}
               disabled={activeMutation.isPending}
@@ -132,20 +162,19 @@ export function ShareReportCard({ clientId }: { clientId: string }) {
               }`}
             >
               {activeMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              {share.active ? "Desativar" : "Ativar"}
+              {share.active ? "Desativar compartilhamento" : "Ativar compartilhamento"}
             </button>
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={share.allow_date_change}
+                disabled={dateMutation.isPending}
+                onChange={(e) => dateMutation.mutate(e.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+              <span>Permitir alterar o período nos links</span>
+            </label>
           </div>
-
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={share.allow_date_change}
-              disabled={dateMutation.isPending}
-              onChange={(e) => dateMutation.mutate(e.target.checked)}
-              className="h-4 w-4 accent-primary"
-            />
-            <span>Permitir que o cliente altere o período no relatório</span>
-          </label>
         </div>
       )}
     </section>
