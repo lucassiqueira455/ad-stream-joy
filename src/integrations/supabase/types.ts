@@ -122,6 +122,7 @@ export type Database = {
           allow_date_change: boolean
           client_id: string
           created_at: string
+          dashboard_token: string | null
           id: string
           token: string
           updated_at: string
@@ -132,6 +133,7 @@ export type Database = {
           allow_date_change?: boolean
           client_id: string
           created_at?: string
+          dashboard_token?: string | null
           id?: string
           token: string
           updated_at?: string
@@ -142,6 +144,7 @@ export type Database = {
           allow_date_change?: boolean
           client_id?: string
           created_at?: string
+          dashboard_token?: string | null
           id?: string
           token?: string
           updated_at?: string
