@@ -869,6 +869,8 @@ export type CampaignRow = {
   cpc: number;
   conversions: number;
   cost_per_conversion: number;
+  profile_visits: number;
+  cost_per_profile_visit: number;
 };
 
 export async function fetchAdAccountCampaigns(params: {
@@ -911,6 +913,7 @@ export async function fetchAdAccountCampaigns(params: {
     const clicks = Number(row.inline_link_clicks || row.clicks || 0);
     const details = buildConversionDetails(row.actions, row.conversions);
     const conversions = Object.values(details.breakdown).reduce((s, v) => s + v, 0);
+    const profile_visits = maxActionValueWhere([row.actions, row.conversions], isProfileVisitType);
     return {
       campaign_id: row.campaign_id ?? "",
       campaign_name: row.campaign_name ?? "—",
@@ -921,13 +924,17 @@ export async function fetchAdAccountCampaigns(params: {
       cpc: clicks > 0 ? spend / clicks : Number(row.cpc || 0),
       conversions,
       cost_per_conversion: conversions > 0 ? spend / conversions : 0,
+      profile_visits,
+      cost_per_profile_visit: profile_visits > 0 ? spend / profile_visits : 0,
     };
   });
 }
 
+
 export type AdRow = {
   ad_id: string;
   ad_name: string;
+  campaign_id: string;
   campaign_name: string;
   thumbnail_url: string | null;
   spend: number;
@@ -936,6 +943,8 @@ export type AdRow = {
   ctr: number;
   conversions: number;
   cost_per_conversion: number;
+  profile_visits: number;
+  cost_per_profile_visit: number;
 };
 
 export async function fetchAdAccountAds(params: {
@@ -947,7 +956,7 @@ export async function fetchAdAccountAds(params: {
   const url = new URL(`${GRAPH}/act_${externalAccountId}/insights`);
   url.searchParams.set(
     "fields",
-    ["ad_id", "ad_name", "campaign_name", "spend", "impressions", "clicks", "inline_link_clicks", "ctr", "actions", "conversions"].join(","),
+    ["ad_id", "ad_name", "campaign_id", "campaign_name", "spend", "impressions", "clicks", "inline_link_clicks", "ctr", "actions", "conversions"].join(","),
   );
   url.searchParams.set("date_preset", datePreset);
   url.searchParams.set("use_unified_attribution_setting", "true");
@@ -961,6 +970,7 @@ export async function fetchAdAccountAds(params: {
     data?: Array<{
       ad_id?: string;
       ad_name?: string;
+      campaign_id?: string;
       campaign_name?: string;
       spend?: string;
       impressions?: string;
@@ -978,9 +988,11 @@ export async function fetchAdAccountAds(params: {
     const clicks = Number(row.inline_link_clicks || row.clicks || 0);
     const details = buildConversionDetails(row.actions, row.conversions);
     const conversions = Object.values(details.breakdown).reduce((s, v) => s + v, 0);
+    const profile_visits = maxActionValueWhere([row.actions, row.conversions], isProfileVisitType);
     return {
       ad_id: row.ad_id ?? "",
       ad_name: row.ad_name ?? "—",
+      campaign_id: row.campaign_id ?? "",
       campaign_name: row.campaign_name ?? "",
       thumbnail_url: null as string | null,
       spend,
@@ -989,12 +1001,17 @@ export async function fetchAdAccountAds(params: {
       ctr: Number(row.ctr || 0),
       conversions,
       cost_per_conversion: conversions > 0 ? spend / conversions : 0,
+      profile_visits,
+      cost_per_profile_visit: profile_visits > 0 ? spend / profile_visits : 0,
     };
   });
 
-  // Rank + fetch thumbnails for top 20 by conversions/spend
-  rows.sort((a, b) => (b.conversions - a.conversions) || (b.spend - a.spend));
+  // Rank + fetch thumbnails for top 20 by conversions/profile_visits/spend
+  rows.sort((a, b) =>
+    (b.conversions + b.profile_visits) - (a.conversions + a.profile_visits) || (b.spend - a.spend),
+  );
   const top = rows.slice(0, 20);
+
 
   await Promise.all(
     top.map(async (r) => {
