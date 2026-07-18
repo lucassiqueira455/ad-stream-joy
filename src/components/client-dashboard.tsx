@@ -161,16 +161,25 @@ export function ClientDashboardView({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-            <MetricCard label="Investimento" value={fmtCurrency(totals.spend, currency)} icon={DollarSign} />
-            <MetricCard label="Conversões" value={fmtNumber(totals.conversions)} icon={Trophy} />
-            <MetricCard label="Custo por conversão" value={fmtCurrency(totals.cost_per_conversion, currency)} icon={Target} />
-            <MetricCard label="Alcance" value={fmtNumber(totals.reach)} icon={Users} />
-            <MetricCard label="Impressões" value={fmtNumber(totals.impressions)} icon={Eye} />
-            <MetricCard label="Cliques" value={fmtNumber(totals.link_clicks || totals.clicks)} icon={MousePointerClick} />
-            <MetricCard label="CTR" value={fmtPercent(totals.ctr_link || totals.ctr)} icon={Percent} />
-            <MetricCard label="CPC" value={fmtCurrency(totals.cpc_link || totals.cpc, currency)} icon={DollarSign} />
-          </div>
+          {(() => {
+            const isProfile = totals.profile_visits > totals.conversions;
+            const resultLabel = isProfile ? "Visitas ao perfil" : "Conversões";
+            const costLabel = isProfile ? "Custo por visita" : "Custo por conversão";
+            const resultValue = isProfile ? totals.profile_visits : totals.conversions;
+            const costValue = isProfile ? totals.cost_per_profile_visit : totals.cost_per_conversion;
+            return (
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                <MetricCard label="Investimento" value={fmtCurrency(totals.spend, currency)} icon={DollarSign} />
+                <MetricCard label={resultLabel} value={fmtNumber(resultValue)} icon={Trophy} />
+                <MetricCard label={costLabel} value={fmtCurrency(costValue, currency)} icon={Target} />
+                <MetricCard label="Alcance" value={fmtNumber(totals.reach)} icon={Users} />
+                <MetricCard label="Impressões" value={fmtNumber(totals.impressions)} icon={Eye} />
+                <MetricCard label="Cliques" value={fmtNumber(totals.link_clicks || totals.clicks)} icon={MousePointerClick} />
+                <MetricCard label="CTR" value={fmtPercent(totals.ctr_link || totals.ctr)} icon={Percent} />
+                <MetricCard label="CPC" value={fmtCurrency(totals.cpc_link || totals.cpc, currency)} icon={DollarSign} />
+              </div>
+            );
+          })()}
 
           {series.length > 0 && (
             <div className="mt-6 grid gap-4 md:grid-cols-2">
