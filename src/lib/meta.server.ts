@@ -869,6 +869,8 @@ export type CampaignRow = {
   cpc: number;
   conversions: number;
   cost_per_conversion: number;
+  profile_visits: number;
+  cost_per_profile_visit: number;
 };
 
 export async function fetchAdAccountCampaigns(params: {
@@ -911,6 +913,7 @@ export async function fetchAdAccountCampaigns(params: {
     const clicks = Number(row.inline_link_clicks || row.clicks || 0);
     const details = buildConversionDetails(row.actions, row.conversions);
     const conversions = Object.values(details.breakdown).reduce((s, v) => s + v, 0);
+    const profile_visits = maxActionValueWhere([row.actions, row.conversions], isProfileVisitType);
     return {
       campaign_id: row.campaign_id ?? "",
       campaign_name: row.campaign_name ?? "—",
@@ -921,9 +924,12 @@ export async function fetchAdAccountCampaigns(params: {
       cpc: clicks > 0 ? spend / clicks : Number(row.cpc || 0),
       conversions,
       cost_per_conversion: conversions > 0 ? spend / conversions : 0,
+      profile_visits,
+      cost_per_profile_visit: profile_visits > 0 ? spend / profile_visits : 0,
     };
   });
 }
+
 
 export type AdRow = {
   ad_id: string;
