@@ -261,50 +261,71 @@ export function ClientDashboardView({
             </div>
           )}
 
-          {data && data.topAds.length > 0 && (
-            <div className="mt-6 overflow-hidden rounded-xl border border-border bg-card">
-              <div className="border-b border-border px-4 py-3">
-                <h3 className="text-sm font-semibold">Melhores anúncios</h3>
-                <p className="text-xs text-muted-foreground">Ranqueado por conversões</p>
+          {data && data.topAds.length > 0 && (() => {
+            const groups = new Map<string, typeof data.topAds>();
+            for (const a of data.topAds) {
+              const key = a.campaign_name || "Sem campanha";
+              const arr = groups.get(key) ?? [];
+              arr.push(a);
+              groups.set(key, arr);
+            }
+            const ordered = Array.from(groups.entries()).sort(
+              (x, y) =>
+                y[1].reduce((s, a) => s + a.conversions, 0) -
+                x[1].reduce((s, a) => s + a.conversions, 0),
+            );
+            return (
+              <div className="mt-6 space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold">Melhores anúncios por campanha</h3>
+                  <p className="text-xs text-muted-foreground">Agrupado por campanha para separar objetivos (conversões, visita ao perfil, etc.)</p>
+                </div>
+                {ordered.map(([campaign, ads]) => (
+                  <div key={campaign} className="overflow-hidden rounded-xl border border-border bg-card">
+                    <div className="border-b border-border bg-background/40 px-4 py-2">
+                      <p className="text-sm font-semibold">{campaign}</p>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-background/50 text-xs uppercase tracking-wider text-muted-foreground">
+                          <tr>
+                            <th className="px-4 py-2 text-left">Anúncio</th>
+                            <th className="px-4 py-2 text-right">Investimento</th>
+                            <th className="px-4 py-2 text-right">CTR</th>
+                            <th className="px-4 py-2 text-right">Conversões</th>
+                            <th className="px-4 py-2 text-right">Custo/Conv.</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {ads.map((a) => (
+                            <tr key={a.ad_id}>
+                              <td className="px-4 py-2">
+                                <div className="flex items-center gap-3">
+                                  {a.thumbnail_url ? (
+                                    <img src={a.thumbnail_url} alt="" className="h-10 w-10 flex-shrink-0 rounded object-cover" />
+                                  ) : (
+                                    <div className="h-10 w-10 flex-shrink-0 rounded bg-muted" />
+                                  )}
+                                  <div className="min-w-0">
+                                    <p className="truncate font-medium">{a.ad_name}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-2 text-right tabular-nums">{fmtCurrency(a.spend, currency)}</td>
+                              <td className="px-4 py-2 text-right tabular-nums">{fmtPercent(a.ctr)}</td>
+                              <td className="px-4 py-2 text-right tabular-nums">{fmtNumber(a.conversions)}</td>
+                              <td className="px-4 py-2 text-right tabular-nums">{fmtCurrency(a.cost_per_conversion, currency)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-background/50 text-xs uppercase tracking-wider text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-2 text-left">Anúncio</th>
-                      <th className="px-4 py-2 text-right">Investimento</th>
-                      <th className="px-4 py-2 text-right">CTR</th>
-                      <th className="px-4 py-2 text-right">Conversões</th>
-                      <th className="px-4 py-2 text-right">Custo/Conv.</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {data.topAds.map((a) => (
-                      <tr key={a.ad_id}>
-                        <td className="px-4 py-2">
-                          <div className="flex items-center gap-3">
-                            {a.thumbnail_url ? (
-                              <img src={a.thumbnail_url} alt="" className="h-10 w-10 flex-shrink-0 rounded object-cover" />
-                            ) : (
-                              <div className="h-10 w-10 flex-shrink-0 rounded bg-muted" />
-                            )}
-                            <div className="min-w-0">
-                              <p className="truncate font-medium">{a.ad_name}</p>
-                              <p className="truncate text-xs text-muted-foreground">{a.campaign_name}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 text-right tabular-nums">{fmtCurrency(a.spend, currency)}</td>
-                        <td className="px-4 py-2 text-right tabular-nums">{fmtPercent(a.ctr)}</td>
-                        <td className="px-4 py-2 text-right tabular-nums">{fmtNumber(a.conversions)}</td>
-                        <td className="px-4 py-2 text-right tabular-nums">{fmtCurrency(a.cost_per_conversion, currency)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+            );
+          })()}
+
         </>
       )}
     </section>
