@@ -28,6 +28,7 @@ export async function computeClientMetrics(supabase: SupabaseClient<any>, client
   if (cErr) throw cErr;
   const tokenMap = new Map(conns?.map((c) => [c.id, decryptToken(c.access_token_encrypted)]));
 
+  const campaignsAll: CampaignRow[] = [];
   const results = await Promise.all(
     accounts.map(async (a) => {
       try {
@@ -36,17 +37,18 @@ export async function computeClientMetrics(supabase: SupabaseClient<any>, client
         }
         const token = tokenMap.get(a.connection_id);
         if (!token) return { account: a, insights: null, error: "Token não encontrado" };
-        const insights = await fetchAdAccountInsights({
-          token,
-          externalAccountId: a.external_account_id,
-          datePreset,
-        });
+        const [insights, campaigns] = await Promise.all([
+          fetchAdAccountInsights({ token, externalAccountId: a.external_account_id, datePreset }),
+          fetchAdAccountCampaigns({ token, externalAccountId: a.external_account_id, datePreset }).catch(() => [] as CampaignRow[]),
+        ]);
+        campaignsAll.push(...campaigns);
         return { account: a, insights, error: null };
       } catch (e) {
         return { account: a, insights: null, error: e instanceof Error ? e.message : "Erro" };
       }
     }),
   );
+
 
   const withInsights = results.filter((r) => r.insights);
   let totals = null as null | Awaited<ReturnType<typeof fetchAdAccountInsights>>;
