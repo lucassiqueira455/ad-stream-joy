@@ -120,12 +120,18 @@ export async function computeClientMetrics(supabase: SupabaseClient<any>, client
     };
   }
 
+  const campaigns = campaignsAll
+    .filter((c) => c.spend > 0 || c.conversions > 0 || c.profile_visits > 0 || c.impressions > 0)
+    .sort((a, b) => ((b.conversions + b.profile_visits) - (a.conversions + a.profile_visits)) || (b.spend - a.spend));
+
   return {
     accounts: results,
     totals,
     currency: accounts[0].currency ?? null,
+    campaigns,
   };
 }
+
 
 // ============= Dashboard aggregation =============
 
