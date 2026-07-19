@@ -567,6 +567,7 @@ async function fetchCampaignMetricBreakdown(params: {
   token: string;
   externalAccountId: string;
   datePreset: string;
+  timeRange?: { since: string; until: string };
 }): Promise<CampaignMetricBreakdown> {
   const out: CampaignMetricBreakdown = {
     conversions: 0,
@@ -590,13 +591,18 @@ async function fetchCampaignMetricBreakdown(params: {
         "cost_per_result",
       ].join(","),
     );
-    url.searchParams.set("date_preset", params.datePreset);
+    if (params.timeRange) {
+      url.searchParams.set("time_range", JSON.stringify(params.timeRange));
+    } else {
+      url.searchParams.set("date_preset", params.datePreset);
+    }
     url.searchParams.set("use_unified_attribution_setting", "true");
     url.searchParams.set("level", "campaign");
     url.searchParams.set("limit", "500");
     url.searchParams.set("access_token", params.token);
     return url.toString();
   })();
+
 
   while (next) {
     const res = await fetch(next);
@@ -648,8 +654,9 @@ export async function fetchAdAccountInsights(params: {
   token: string;
   externalAccountId: string;
   datePreset?: string;
+  timeRange?: { since: string; until: string };
 }): Promise<MetaInsights> {
-  const { token, externalAccountId, datePreset = "last_30d" } = params;
+  const { token, externalAccountId, datePreset = "last_30d", timeRange } = params;
   const url = new URL(`${GRAPH}/act_${externalAccountId}/insights`);
   url.searchParams.set(
     "fields",
@@ -674,7 +681,11 @@ export async function fetchAdAccountInsights(params: {
       "purchase_roas",
     ].join(","),
   );
-  url.searchParams.set("date_preset", datePreset);
+  if (timeRange) {
+    url.searchParams.set("time_range", JSON.stringify(timeRange));
+  } else {
+    url.searchParams.set("date_preset", datePreset);
+  }
   // Match Ads Manager attribution at campaign/ad-set level when configured.
   url.searchParams.set("use_unified_attribution_setting", "true");
   url.searchParams.set("level", "account");
@@ -730,7 +741,7 @@ export async function fetchAdAccountInsights(params: {
     isProfileVisitType,
   );
 
-  const campaignMetrics = await fetchCampaignMetricBreakdown({ token, externalAccountId, datePreset });
+  const campaignMetrics = await fetchCampaignMetricBreakdown({ token, externalAccountId, datePreset, timeRange });
   const profile_visits = Math.max(accountProfileVisits, campaignMetrics.profileVisits);
   const cost_per_profile_visit = profile_visits > 0
     ? (campaignMetrics.profileVisits > 0
@@ -862,11 +873,15 @@ export async function fetchAdAccountDaily(params: {
 export type CampaignRow = {
   campaign_id: string;
   campaign_name: string;
+  objective: string | null;
+  status: string | null;
   spend: number;
   impressions: number;
   clicks: number;
+  link_clicks: number;
   ctr: number;
   cpc: number;
+  cpm: number;
   conversions: number;
   cost_per_conversion: number;
   profile_visits: number;
@@ -879,20 +894,32 @@ export async function fetchAdAccountCampaigns(params: {
   datePreset?: string;
 }): Promise<CampaignRow[]> {
   const { token, externalAccountId, datePreset = "last_30d" } = params;
-  const url = new URL(`${GRAPH}/act_${externalAccountId}/insights`);
-  url.searchParams.set(
-    "fields",
-    ["campaign_id", "campaign_name", "spend", "impressions", "clicks", "inline_link_clicks", "ctr", "cpc", "actions", "conversions"].join(","),
-  );
-  url.searchParams.set("date_preset", datePreset);
-  url.searchParams.set("use_unified_attribution_setting", "true");
-  url.searchParams.set("level", "campaign");
-  url.searchParams.set("limit", "200");
-  url.searchParams.set("access_token", token);
 
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`Meta campaigns failed: ${await res.text()}`);
-  const json = (await res.json()) as {
+  // 1) Insights per campaign
+  const insightsUrl = new URL(`${GRAPH}/act_${externalAccountId}/insights`);
+  insightsUrl.searchParams.set(
+    "fields",
+    ["campaign_id", "campaign_name", "spend", "impressions", "clicks", "inline_link_clicks", "ctr", "cpc", "cpm", "actions", "conversions"].join(","),
+  );
+  insightsUrl.searchParams.set("date_preset", datePreset);
+  insightsUrl.searchParams.set("use_unified_attribution_setting", "true");
+  insightsUrl.searchParams.set("level", "campaign");
+  insightsUrl.searchParams.set("limit", "200");
+  insightsUrl.searchParams.set("access_token", token);
+
+  const [insightsRes, metaRes] = await Promise.all([
+    fetch(insightsUrl.toString()),
+    (() => {
+      const u = new URL(`${GRAPH}/act_${externalAccountId}/campaigns`);
+      u.searchParams.set("fields", "id,name,objective,status,effective_status");
+      u.searchParams.set("limit", "500");
+      u.searchParams.set("access_token", token);
+      return fetch(u.toString());
+    })(),
+  ]);
+
+  if (!insightsRes.ok) throw new Error(`Meta campaigns failed: ${await insightsRes.text()}`);
+  const insightsJson = (await insightsRes.json()) as {
     data?: Array<{
       campaign_id?: string;
       campaign_name?: string;
@@ -902,26 +929,45 @@ export async function fetchAdAccountCampaigns(params: {
       inline_link_clicks?: string;
       ctr?: string;
       cpc?: string;
+      cpm?: string;
       actions?: MetaActionStat[];
       conversions?: MetaActionStat[];
     }>;
   };
 
-  return (json.data ?? []).map((row) => {
+  const meta = new Map<string, { objective: string | null; status: string | null }>();
+  if (metaRes.ok) {
+    const mj = (await metaRes.json()) as {
+      data?: Array<{ id?: string; objective?: string; status?: string; effective_status?: string }>;
+    };
+    for (const c of mj.data ?? []) {
+      if (!c.id) continue;
+      meta.set(c.id, { objective: c.objective ?? null, status: c.effective_status ?? c.status ?? null });
+    }
+  }
+
+  return (insightsJson.data ?? []).map((row) => {
     const spend = Number(row.spend || 0);
     const impressions = Number(row.impressions || 0);
-    const clicks = Number(row.inline_link_clicks || row.clicks || 0);
+    const allClicks = Number(row.clicks || 0);
+    const link_clicks = Number(row.inline_link_clicks || 0);
+    const clicks = link_clicks || allClicks;
     const details = buildConversionDetails(row.actions, row.conversions);
     const conversions = Object.values(details.breakdown).reduce((s, v) => s + v, 0);
     const profile_visits = maxActionValueWhere([row.actions, row.conversions], isProfileVisitType);
+    const m = meta.get(row.campaign_id ?? "") ?? { objective: null, status: null };
     return {
       campaign_id: row.campaign_id ?? "",
       campaign_name: row.campaign_name ?? "—",
+      objective: m.objective,
+      status: m.status,
       spend,
       impressions,
       clicks,
+      link_clicks,
       ctr: Number(row.ctr || 0),
       cpc: clicks > 0 ? spend / clicks : Number(row.cpc || 0),
+      cpm: Number(row.cpm || 0) || (impressions > 0 ? (spend / impressions) * 1000 : 0),
       conversions,
       cost_per_conversion: conversions > 0 ? spend / conversions : 0,
       profile_visits,
@@ -1030,4 +1076,58 @@ export async function fetchAdAccountAds(params: {
 
   return top;
 }
+
+// ============= Previous-period range helper =============
+
+function ymd(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function addDaysUTC(base: Date, days: number): Date {
+  const d = new Date(base.getTime());
+  d.setUTCDate(d.getUTCDate() + days);
+  return d;
+}
+
+export function previousRangeForPreset(preset: string): { since: string; until: string } | null {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const dayN = (n: number) => {
+    const since = addDaysUTC(today, -(2 * n - 1));
+    const until = addDaysUTC(today, -n);
+    return { since: ymd(since), until: ymd(until) };
+  };
+  switch (preset) {
+    case "today": {
+      const d = addDaysUTC(today, -1);
+      return { since: ymd(d), until: ymd(d) };
+    }
+    case "yesterday": {
+      const d = addDaysUTC(today, -2);
+      return { since: ymd(d), until: ymd(d) };
+    }
+    case "last_3d": return dayN(3);
+    case "last_7d": return dayN(7);
+    case "last_14d": return dayN(14);
+    case "last_28d": return dayN(28);
+    case "last_30d": return dayN(30);
+    case "last_90d": return dayN(90);
+    case "this_month": {
+      const dayOfMonth = today.getUTCDate();
+      const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
+      const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, dayOfMonth));
+      return { since: ymd(start), until: ymd(end) };
+    }
+    case "last_month": {
+      const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 2, 1));
+      const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 0));
+      return { since: ymd(start), until: ymd(end) };
+    }
+    default: return null;
+  }
+}
+
 

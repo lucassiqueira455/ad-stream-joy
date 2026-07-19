@@ -410,8 +410,117 @@ export function ClientMetrics({ clientId, hasAccounts, publicToken, allowDateCha
               </div>
             </div>
           )}
+
+          {(query.data?.campaigns?.length ?? 0) > 0 && (
+            <CampaignsTable campaigns={query.data!.campaigns ?? []} currency={currency} />
+          )}
         </>
       )}
     </section>
+  );
+}
+
+function statusTone(status: string | null): string {
+  const s = (status ?? "").toUpperCase();
+  if (s === "ACTIVE") return "bg-success/15 text-success";
+  if (s === "PAUSED") return "bg-warning/15 text-warning";
+  if (s.includes("DELETED") || s.includes("ARCHIVED")) return "bg-muted text-muted-foreground";
+  return "bg-muted/40 text-foreground";
+}
+
+function objectiveLabel(o: string | null): string {
+  if (!o) return "—";
+  const map: Record<string, string> = {
+    OUTCOME_LEADS: "Leads",
+    OUTCOME_SALES: "Vendas",
+    OUTCOME_ENGAGEMENT: "Engajamento",
+    OUTCOME_TRAFFIC: "Tráfego",
+    OUTCOME_AWARENESS: "Reconhecimento",
+    OUTCOME_APP_PROMOTION: "App",
+    LEAD_GENERATION: "Leads",
+    MESSAGES: "Mensagens",
+    CONVERSIONS: "Conversões",
+    LINK_CLICKS: "Tráfego",
+    POST_ENGAGEMENT: "Engajamento",
+    PAGE_LIKES: "Curtidas",
+    REACH: "Alcance",
+    BRAND_AWARENESS: "Reconhecimento",
+    VIDEO_VIEWS: "Vídeo",
+    PROFILE_VISITS: "Visitas ao perfil",
+  };
+  return map[o] ?? o.replace(/^OUTCOME_/, "").replace(/_/g, " ").toLowerCase();
+}
+
+function CampaignsTable({
+  campaigns,
+  currency,
+}: {
+  campaigns: NonNullable<Awaited<ReturnType<typeof getClientMetrics>>["campaigns"]>;
+  currency: string | null;
+}) {
+  const rows = [...campaigns].sort((a, b) => {
+    const ra = a.profile_visits > a.conversions ? a.profile_visits : a.conversions;
+    const rb = b.profile_visits > b.conversions ? b.profile_visits : b.conversions;
+    return (rb - ra) || (b.spend - a.spend);
+  });
+  return (
+    <div className="mt-6 overflow-hidden rounded-xl border border-border bg-card">
+      <div className="border-b border-border px-4 py-3">
+        <h3 className="text-sm font-semibold">Campanhas</h3>
+        <p className="text-xs text-muted-foreground">
+          Ordenadas pelas de melhor desempenho
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-background/50 text-[11px] uppercase tracking-wider text-muted-foreground">
+            <tr>
+              <th className="px-4 py-2 text-left">Campanha</th>
+              <th className="px-4 py-2 text-left">Objetivo</th>
+              <th className="px-4 py-2 text-left">Status</th>
+              <th className="px-4 py-2 text-right">Investimento</th>
+              <th className="px-4 py-2 text-right">Resultado</th>
+              <th className="px-4 py-2 text-right">Custo/Result.</th>
+              <th className="px-4 py-2 text-right">CTR</th>
+              <th className="px-4 py-2 text-right">CPC</th>
+              <th className="px-4 py-2 text-right">CPM</th>
+              <th className="px-4 py-2 text-right">Impressões</th>
+              <th className="px-4 py-2 text-right">Cliques</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((c) => {
+              const isProfile = c.profile_visits > c.conversions;
+              const result = isProfile ? c.profile_visits : c.conversions;
+              const cost = isProfile ? c.cost_per_profile_visit : c.cost_per_conversion;
+              return (
+                <tr key={c.campaign_id}>
+                  <td className="px-4 py-2 font-medium">
+                    <div className="max-w-[280px] truncate" title={c.campaign_name}>{c.campaign_name}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {isProfile ? "Visitas ao perfil" : "Conversões"}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2 text-xs">{objectiveLabel(c.objective)}</td>
+                  <td className="px-4 py-2">
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${statusTone(c.status)}`}>
+                      {c.status ?? "—"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums">{fmtCurrency(c.spend, currency)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums font-semibold">{fmtNumber(result)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{fmtCurrency(cost, currency)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{fmtPercent(c.ctr)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{fmtCurrency(c.cpc, currency)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{fmtCurrency(c.cpm, currency)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{fmtNumber(c.impressions)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{fmtNumber(c.link_clicks || c.clicks)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
