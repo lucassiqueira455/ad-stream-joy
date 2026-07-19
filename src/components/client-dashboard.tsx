@@ -200,7 +200,9 @@ export function ClientDashboardView({
   const prev = data?.previousTotals ?? null;
   const currency = data?.currency ?? null;
 
+  const series = data?.series ?? [];
   const topCampaigns = data?.topCampaigns ?? [];
+
   const topAds = data?.topAds ?? [];
 
 
