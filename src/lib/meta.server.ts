@@ -1077,3 +1077,57 @@ export async function fetchAdAccountAds(params: {
   return top;
 }
 
+// ============= Previous-period range helper =============
+
+function ymd(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function addDaysUTC(base: Date, days: number): Date {
+  const d = new Date(base.getTime());
+  d.setUTCDate(d.getUTCDate() + days);
+  return d;
+}
+
+export function previousRangeForPreset(preset: string): { since: string; until: string } | null {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const dayN = (n: number) => {
+    const since = addDaysUTC(today, -(2 * n - 1));
+    const until = addDaysUTC(today, -n);
+    return { since: ymd(since), until: ymd(until) };
+  };
+  switch (preset) {
+    case "today": {
+      const d = addDaysUTC(today, -1);
+      return { since: ymd(d), until: ymd(d) };
+    }
+    case "yesterday": {
+      const d = addDaysUTC(today, -2);
+      return { since: ymd(d), until: ymd(d) };
+    }
+    case "last_3d": return dayN(3);
+    case "last_7d": return dayN(7);
+    case "last_14d": return dayN(14);
+    case "last_28d": return dayN(28);
+    case "last_30d": return dayN(30);
+    case "last_90d": return dayN(90);
+    case "this_month": {
+      const dayOfMonth = today.getUTCDate();
+      const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
+      const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, dayOfMonth));
+      return { since: ymd(start), until: ymd(end) };
+    }
+    case "last_month": {
+      const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 2, 1));
+      const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 0));
+      return { since: ymd(start), until: ymd(end) };
+    }
+    default: return null;
+  }
+}
+
+
