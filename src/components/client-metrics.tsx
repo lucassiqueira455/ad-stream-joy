@@ -412,7 +412,7 @@ export function ClientMetrics({ clientId, hasAccounts, publicToken, allowDateCha
           )}
 
           {(query.data?.campaigns?.length ?? 0) > 0 && (
-            <CampaignsTable campaigns={query.data!.campaigns} currency={currency} />
+            <CampaignsTable campaigns={query.data!.campaigns ?? []} currency={currency} />
           )}
         </>
       )}
