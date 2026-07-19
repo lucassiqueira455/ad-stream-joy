@@ -132,10 +132,17 @@ import type { CampaignRow, AdRow, DailyPoint } from "./meta.server";
 export async function computeClientDashboard(supabase: SupabaseClient<any>, clientId: string, datePreset: DatePreset) {
   const base = await computeClientMetrics(supabase, clientId, datePreset);
   if (!base.totals || base.accounts.length === 0) {
-    return { ...base, series: [] as DailyPoint[], topCampaigns: [] as CampaignRow[], topAds: [] as AdRow[], lastSyncedAt: Date.now() };
+    return {
+      ...base,
+      series: [] as DailyPoint[],
+      topCampaigns: [] as CampaignRow[],
+      topAds: [] as AdRow[],
+      previousTotals: null as typeof base.totals,
+      lastSyncedAt: Date.now(),
+    };
   }
 
-  const { fetchAdAccountDaily, fetchAdAccountCampaigns, fetchAdAccountAds } = await import("./meta.server");
+  const { fetchAdAccountDaily, fetchAdAccountCampaigns, fetchAdAccountAds, fetchAdAccountInsights, previousRangeForPreset } = await import("./meta.server");
 
   const connectionIds = [...new Set(base.accounts.map((r) => r.account.connection_id))];
   const { data: conns } = await supabase
@@ -147,6 +154,8 @@ export async function computeClientDashboard(supabase: SupabaseClient<any>, clie
   const daily: Record<string, DailyPoint> = {};
   const campaigns: CampaignRow[] = [];
   const ads: AdRow[] = [];
+  const prevRange = previousRangeForPreset(datePreset);
+  const prevInsightsList: Awaited<ReturnType<typeof fetchAdAccountInsights>>[] = [];
 
   await Promise.all(
     base.accounts.map(async (r) => {
@@ -154,10 +163,13 @@ export async function computeClientDashboard(supabase: SupabaseClient<any>, clie
       const token = tokenMap.get(r.account.connection_id);
       if (!token) return;
       try {
-        const [d, c, a] = await Promise.all([
+        const [d, c, a, prev] = await Promise.all([
           fetchAdAccountDaily({ token, externalAccountId: r.account.external_account_id, datePreset }),
           fetchAdAccountCampaigns({ token, externalAccountId: r.account.external_account_id, datePreset }),
           fetchAdAccountAds({ token, externalAccountId: r.account.external_account_id, datePreset }),
+          prevRange
+            ? fetchAdAccountInsights({ token, externalAccountId: r.account.external_account_id, timeRange: prevRange }).catch(() => null)
+            : Promise.resolve(null),
         ]);
         for (const p of d) {
           const cur = daily[p.date];
@@ -174,22 +186,64 @@ export async function computeClientDashboard(supabase: SupabaseClient<any>, clie
         }
         campaigns.push(...c);
         ads.push(...a);
+        if (prev) prevInsightsList.push(prev);
       } catch { /* per-account failure — skip */ }
     }),
   );
+
+  // Aggregate previous totals across accounts (subset of fields for deltas).
+  let previousTotals: typeof base.totals = null;
+  if (prevInsightsList.length > 0) {
+    const s = {
+      spend: 0, impressions: 0, reach: 0, clicks: 0, link_clicks: 0,
+      conversions: 0, profile_visits: 0, conv_cost_total: 0, pv_cost_total: 0,
+    };
+    for (const i of prevInsightsList) {
+      s.spend += i.spend;
+      s.impressions += i.impressions;
+      s.reach += i.reach;
+      s.clicks += i.clicks;
+      s.link_clicks += i.link_clicks;
+      s.conversions += i.conversions;
+      s.profile_visits += i.profile_visits;
+      s.conv_cost_total += i.cost_per_conversion * i.conversions;
+      s.pv_cost_total += i.cost_per_profile_visit * i.profile_visits;
+    }
+    previousTotals = {
+      ...base.totals,
+      spend: s.spend,
+      impressions: s.impressions,
+      reach: s.reach,
+      frequency: s.reach > 0 ? s.impressions / s.reach : 0,
+      cpm: s.impressions > 0 ? (s.spend / s.impressions) * 1000 : 0,
+      clicks: s.clicks,
+      link_clicks: s.link_clicks,
+      cpc: s.clicks > 0 ? s.spend / s.clicks : 0,
+      cpc_link: s.link_clicks > 0 ? s.spend / s.link_clicks : 0,
+      ctr: s.impressions > 0 ? (s.clicks / s.impressions) * 100 : 0,
+      ctr_link: s.impressions > 0 ? (s.link_clicks / s.impressions) * 100 : 0,
+      conversions: s.conversions,
+      results: s.conversions,
+      cost_per_conversion: s.conversions > 0 ? s.conv_cost_total / s.conversions : 0,
+      cost_per_result: s.conversions > 0 ? s.conv_cost_total / s.conversions : 0,
+      profile_visits: s.profile_visits,
+      cost_per_profile_visit: s.profile_visits > 0 ? s.pv_cost_total / s.profile_visits : 0,
+    };
+  }
 
   const series = Object.values(daily).sort((a, b) => a.date.localeCompare(b.date));
   const topCampaigns = campaigns
     .filter((c) => c.spend > 0 || c.conversions > 0 || c.profile_visits > 0)
     .sort((a, b) => ((b.conversions + b.profile_visits) - (a.conversions + a.profile_visits)) || (b.spend - a.spend))
-    .slice(0, 10);
+    .slice(0, 20);
   const topAds = ads
     .filter((a) => a.spend > 0 || a.conversions > 0 || a.profile_visits > 0)
     .sort((a, b) => ((b.conversions + b.profile_visits) - (a.conversions + a.profile_visits)) || (b.spend - a.spend))
     .slice(0, 20);
 
 
-  return { ...base, series, topCampaigns, topAds, lastSyncedAt: Date.now() };
+  return { ...base, series, topCampaigns, topAds, previousTotals, lastSyncedAt: Date.now() };
 }
+
 
 
