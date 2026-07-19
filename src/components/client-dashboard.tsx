@@ -194,15 +194,15 @@ export function ClientDashboardView({
     refetchOnMount: "always",
   });
 
-  const data = query.data;
+  type DashboardData = Awaited<ReturnType<typeof getClientDashboard>>;
+  const data = query.data as DashboardData | undefined;
   const totals = data?.totals ?? null;
   const prev = data?.previousTotals ?? null;
   const currency = data?.currency ?? null;
 
-  const series = useMemo(() => data?.series ?? [], [data]);
-
   const topCampaigns = data?.topCampaigns ?? [];
   const topAds = data?.topAds ?? [];
+
 
   // Determine the primary result mode across the account.
   const isProfileMode = !!totals && totals.profile_visits > totals.conversions;
