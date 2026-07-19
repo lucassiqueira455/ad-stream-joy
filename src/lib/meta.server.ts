@@ -873,11 +873,15 @@ export async function fetchAdAccountDaily(params: {
 export type CampaignRow = {
   campaign_id: string;
   campaign_name: string;
+  objective: string | null;
+  status: string | null;
   spend: number;
   impressions: number;
   clicks: number;
+  link_clicks: number;
   ctr: number;
   cpc: number;
+  cpm: number;
   conversions: number;
   cost_per_conversion: number;
   profile_visits: number;
@@ -890,20 +894,32 @@ export async function fetchAdAccountCampaigns(params: {
   datePreset?: string;
 }): Promise<CampaignRow[]> {
   const { token, externalAccountId, datePreset = "last_30d" } = params;
-  const url = new URL(`${GRAPH}/act_${externalAccountId}/insights`);
-  url.searchParams.set(
-    "fields",
-    ["campaign_id", "campaign_name", "spend", "impressions", "clicks", "inline_link_clicks", "ctr", "cpc", "actions", "conversions"].join(","),
-  );
-  url.searchParams.set("date_preset", datePreset);
-  url.searchParams.set("use_unified_attribution_setting", "true");
-  url.searchParams.set("level", "campaign");
-  url.searchParams.set("limit", "200");
-  url.searchParams.set("access_token", token);
 
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`Meta campaigns failed: ${await res.text()}`);
-  const json = (await res.json()) as {
+  // 1) Insights per campaign
+  const insightsUrl = new URL(`${GRAPH}/act_${externalAccountId}/insights`);
+  insightsUrl.searchParams.set(
+    "fields",
+    ["campaign_id", "campaign_name", "spend", "impressions", "clicks", "inline_link_clicks", "ctr", "cpc", "cpm", "actions", "conversions"].join(","),
+  );
+  insightsUrl.searchParams.set("date_preset", datePreset);
+  insightsUrl.searchParams.set("use_unified_attribution_setting", "true");
+  insightsUrl.searchParams.set("level", "campaign");
+  insightsUrl.searchParams.set("limit", "200");
+  insightsUrl.searchParams.set("access_token", token);
+
+  const [insightsRes, metaRes] = await Promise.all([
+    fetch(insightsUrl.toString()),
+    (() => {
+      const u = new URL(`${GRAPH}/act_${externalAccountId}/campaigns`);
+      u.searchParams.set("fields", "id,name,objective,status,effective_status");
+      u.searchParams.set("limit", "500");
+      u.searchParams.set("access_token", token);
+      return fetch(u.toString());
+    })(),
+  ]);
+
+  if (!insightsRes.ok) throw new Error(`Meta campaigns failed: ${await insightsRes.text()}`);
+  const insightsJson = (await insightsRes.json()) as {
     data?: Array<{
       campaign_id?: string;
       campaign_name?: string;
@@ -913,26 +929,45 @@ export async function fetchAdAccountCampaigns(params: {
       inline_link_clicks?: string;
       ctr?: string;
       cpc?: string;
+      cpm?: string;
       actions?: MetaActionStat[];
       conversions?: MetaActionStat[];
     }>;
   };
 
-  return (json.data ?? []).map((row) => {
+  const meta = new Map<string, { objective: string | null; status: string | null }>();
+  if (metaRes.ok) {
+    const mj = (await metaRes.json()) as {
+      data?: Array<{ id?: string; objective?: string; status?: string; effective_status?: string }>;
+    };
+    for (const c of mj.data ?? []) {
+      if (!c.id) continue;
+      meta.set(c.id, { objective: c.objective ?? null, status: c.effective_status ?? c.status ?? null });
+    }
+  }
+
+  return (insightsJson.data ?? []).map((row) => {
     const spend = Number(row.spend || 0);
     const impressions = Number(row.impressions || 0);
-    const clicks = Number(row.inline_link_clicks || row.clicks || 0);
+    const allClicks = Number(row.clicks || 0);
+    const link_clicks = Number(row.inline_link_clicks || 0);
+    const clicks = link_clicks || allClicks;
     const details = buildConversionDetails(row.actions, row.conversions);
     const conversions = Object.values(details.breakdown).reduce((s, v) => s + v, 0);
     const profile_visits = maxActionValueWhere([row.actions, row.conversions], isProfileVisitType);
+    const m = meta.get(row.campaign_id ?? "") ?? { objective: null, status: null };
     return {
       campaign_id: row.campaign_id ?? "",
       campaign_name: row.campaign_name ?? "—",
+      objective: m.objective,
+      status: m.status,
       spend,
       impressions,
       clicks,
+      link_clicks,
       ctr: Number(row.ctr || 0),
       cpc: clicks > 0 ? spend / clicks : Number(row.cpc || 0),
+      cpm: Number(row.cpm || 0) || (impressions > 0 ? (spend / impressions) * 1000 : 0),
       conversions,
       cost_per_conversion: conversions > 0 ? spend / conversions : 0,
       profile_visits,
