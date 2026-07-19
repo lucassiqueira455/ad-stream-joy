@@ -675,7 +675,11 @@ export async function fetchAdAccountInsights(params: {
       "purchase_roas",
     ].join(","),
   );
-  url.searchParams.set("date_preset", datePreset);
+  if (timeRange) {
+    url.searchParams.set("time_range", JSON.stringify(timeRange));
+  } else {
+    url.searchParams.set("date_preset", datePreset);
+  }
   // Match Ads Manager attribution at campaign/ad-set level when configured.
   url.searchParams.set("use_unified_attribution_setting", "true");
   url.searchParams.set("level", "account");
