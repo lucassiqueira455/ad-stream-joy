@@ -161,7 +161,6 @@ export async function computeClientDashboard(supabase: SupabaseClient<any>, clie
   const tokenMap = new Map(conns?.map((c) => [c.id, decryptToken(c.access_token_encrypted)]));
 
   const daily: Record<string, DailyPoint> = {};
-  const campaigns: CampaignRow[] = [];
   const ads: AdRow[] = [];
   const prevRange = previousRangeForPreset(datePreset);
   const prevInsightsList: Awaited<ReturnType<typeof fetchAdAccountInsights>>[] = [];
@@ -172,9 +171,8 @@ export async function computeClientDashboard(supabase: SupabaseClient<any>, clie
       const token = tokenMap.get(r.account.connection_id);
       if (!token) return;
       try {
-        const [d, c, a, prev] = await Promise.all([
+        const [d, a, prev] = await Promise.all([
           fetchAdAccountDaily({ token, externalAccountId: r.account.external_account_id, datePreset }),
-          fetchAdAccountCampaigns({ token, externalAccountId: r.account.external_account_id, datePreset }),
           fetchAdAccountAds({ token, externalAccountId: r.account.external_account_id, datePreset }),
           prevRange
             ? fetchAdAccountInsights({ token, externalAccountId: r.account.external_account_id, timeRange: prevRange }).catch(() => null)
@@ -193,11 +191,11 @@ export async function computeClientDashboard(supabase: SupabaseClient<any>, clie
             cur.cpc = cur.clicks > 0 ? cur.spend / cur.clicks : 0;
           }
         }
-        campaigns.push(...c);
         ads.push(...a);
         if (prev) prevInsightsList.push(prev);
       } catch { /* per-account failure — skip */ }
     }),
+
   );
 
   // Aggregate previous totals across accounts (subset of fields for deltas).
