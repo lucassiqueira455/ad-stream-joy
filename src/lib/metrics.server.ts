@@ -2,7 +2,8 @@
 // Used both by the authenticated dashboard and the public share endpoint.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { decryptToken } from "./crypto.server";
-import { fetchAdAccountInsights } from "./meta.server";
+import { fetchAdAccountInsights, fetchAdAccountCampaigns } from "./meta.server";
+
 
 export type DatePreset =
   | "today" | "yesterday" | "last_3d" | "last_7d" | "last_14d"
