@@ -192,7 +192,7 @@ export async function computeClientDashboard(supabase: SupabaseClient<any>, clie
   );
 
   // Aggregate previous totals across accounts (subset of fields for deltas).
-  let previousTotals: typeof base.totals = null;
+  let previousTotals: typeof base.totals | null = null;
   if (prevInsightsList.length > 0) {
     const s = {
       spend: 0, impressions: 0, reach: 0, clicks: 0, link_clicks: 0,
