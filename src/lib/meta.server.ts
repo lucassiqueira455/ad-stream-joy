@@ -567,6 +567,7 @@ async function fetchCampaignMetricBreakdown(params: {
   token: string;
   externalAccountId: string;
   datePreset: string;
+  timeRange?: { since: string; until: string };
 }): Promise<CampaignMetricBreakdown> {
   const out: CampaignMetricBreakdown = {
     conversions: 0,
@@ -590,13 +591,18 @@ async function fetchCampaignMetricBreakdown(params: {
         "cost_per_result",
       ].join(","),
     );
-    url.searchParams.set("date_preset", params.datePreset);
+    if (params.timeRange) {
+      url.searchParams.set("time_range", JSON.stringify(params.timeRange));
+    } else {
+      url.searchParams.set("date_preset", params.datePreset);
+    }
     url.searchParams.set("use_unified_attribution_setting", "true");
     url.searchParams.set("level", "campaign");
     url.searchParams.set("limit", "500");
     url.searchParams.set("access_token", params.token);
     return url.toString();
   })();
+
 
   while (next) {
     const res = await fetch(next);
