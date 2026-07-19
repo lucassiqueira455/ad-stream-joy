@@ -239,10 +239,8 @@ export async function computeClientDashboard(supabase: SupabaseClient<any>, clie
   }
 
   const series = Object.values(daily).sort((a, b) => a.date.localeCompare(b.date));
-  const topCampaigns = campaigns
-    .filter((c) => c.spend > 0 || c.conversions > 0 || c.profile_visits > 0)
-    .sort((a, b) => ((b.conversions + b.profile_visits) - (a.conversions + a.profile_visits)) || (b.spend - a.spend))
-    .slice(0, 20);
+  const topCampaigns = base.campaigns.slice(0, 20);
+
   const topAds = ads
     .filter((a) => a.spend > 0 || a.conversions > 0 || a.profile_visits > 0)
     .sort((a, b) => ((b.conversions + b.profile_visits) - (a.conversions + a.profile_visits)) || (b.spend - a.spend))
