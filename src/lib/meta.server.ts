@@ -648,8 +648,9 @@ export async function fetchAdAccountInsights(params: {
   token: string;
   externalAccountId: string;
   datePreset?: string;
+  timeRange?: { since: string; until: string };
 }): Promise<MetaInsights> {
-  const { token, externalAccountId, datePreset = "last_30d" } = params;
+  const { token, externalAccountId, datePreset = "last_30d", timeRange } = params;
   const url = new URL(`${GRAPH}/act_${externalAccountId}/insights`);
   url.searchParams.set(
     "fields",
