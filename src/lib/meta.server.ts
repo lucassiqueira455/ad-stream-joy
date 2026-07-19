@@ -741,7 +741,7 @@ export async function fetchAdAccountInsights(params: {
     isProfileVisitType,
   );
 
-  const campaignMetrics = await fetchCampaignMetricBreakdown({ token, externalAccountId, datePreset });
+  const campaignMetrics = await fetchCampaignMetricBreakdown({ token, externalAccountId, datePreset, timeRange });
   const profile_visits = Math.max(accountProfileVisits, campaignMetrics.profileVisits);
   const cost_per_profile_visit = profile_visits > 0
     ? (campaignMetrics.profileVisits > 0
