@@ -524,8 +524,3 @@ function CampaignsTable({
     </div>
   );
 }
-
-      )}
-    </section>
-  );
-}
