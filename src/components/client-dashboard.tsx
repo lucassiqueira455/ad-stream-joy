@@ -338,23 +338,29 @@ export function ClientDashboardView({
 
           {/* Daily evolution line — spend + clicks */}
           {series.length > 1 && (
-            <div className="mt-6">
-              <ChartCard title="Evolução diária" subtitle="Investimento e cliques por dia" tall>
-                <LineChart data={series} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                  <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" stroke={AXIS} fontSize={11} tickFormatter={(d: string) => d.slice(5)} tickLine={false} axisLine={false} />
-                  <YAxis yAxisId="left" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis yAxisId="right" orientation="right" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={tooltipStyle}
-                    labelStyle={{ color: AXIS }}
-                    formatter={(v: number, k: string) => k === "spend" ? [fmtCurrency(v, currency), "Investimento"] : [fmtNumber(v), "Cliques"]}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 12, color: AXIS }} />
-                  <Line yAxisId="left" type="monotone" dataKey="spend" name="Investimento" stroke={PALETTE[0]} strokeWidth={2.5} dot={false} />
-                  <Line yAxisId="right" type="monotone" dataKey="clicks" name="Cliques" stroke={PALETTE[1]} strokeWidth={2.5} dot={false} />
-                </LineChart>
-              </ChartCard>
+            <div className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-card">
+              <div className="mb-2">
+                <p className="text-sm font-semibold">Evolução diária</p>
+                <p className="text-[11px] text-muted-foreground">Investimento e cliques por dia</p>
+              </div>
+              <div className="h-72 w-full">
+                <ResponsiveContainer>
+                  <LineChart data={series} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" stroke={AXIS} fontSize={11} tickFormatter={(d: string) => d.slice(5)} tickLine={false} axisLine={false} />
+                    <YAxis yAxisId="left" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis yAxisId="right" orientation="right" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      labelStyle={{ color: AXIS }}
+                      formatter={(v: number, k: string) => k === "spend" ? [fmtCurrency(v, currency), "Investimento"] : [fmtNumber(v), "Cliques"]}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12, color: AXIS }} />
+                    <Line yAxisId="left" type="monotone" dataKey="spend" name="Investimento" stroke={PALETTE[0]} strokeWidth={2.5} dot={false} />
+                    <Line yAxisId="right" type="monotone" dataKey="clicks" name="Cliques" stroke={PALETTE[1]} strokeWidth={2.5} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           )}
 
@@ -470,16 +476,14 @@ export function ClientDashboardView({
 
 // ---------------- Chart primitives ----------------
 
-function ChartCard({ title, subtitle, children, tall }: { title: string; subtitle?: string; children: React.ReactNode; tall?: boolean }) {
+function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
       <div className="mb-2">
         <p className="text-sm font-semibold">{title}</p>
         {subtitle ? <p className="text-[11px] text-muted-foreground">{subtitle}</p> : null}
       </div>
-      <div className={tall ? "h-72 w-full" : "h-56 w-full"}>
-        <ResponsiveContainer>{children as React.ReactElement}</ResponsiveContainer>
-      </div>
+      <div className="h-64 w-full">{children}</div>
     </div>
   );
 }
@@ -499,32 +503,34 @@ function DonutSpend({ campaigns, currency }: { campaigns: CampaignLike[]; curren
   const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
   const top = [...campaigns].sort((a, b) => b.spend - a.spend).slice(0, 6);
   const other = campaigns.slice(6).reduce((s, c) => s + c.spend, 0);
-  const rows = top.map((c) => ({ name: c.campaign_name, value: c.spend }));
+  const rows = top.filter((c) => c.spend > 0).map((c) => ({ name: c.campaign_name, value: c.spend }));
   if (other > 0) rows.push({ name: "Outras", value: other });
-  if (totalSpend === 0) return <EmptyChart />;
+  if (totalSpend === 0 || rows.length === 0) return <EmptyChart />;
   return (
-    <PieChart>
-      <Pie
-        data={rows}
-        dataKey="value"
-        nameKey="name"
-        innerRadius={55}
-        outerRadius={85}
-        paddingAngle={2}
-        stroke="none"
-      >
-        {rows.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
-      </Pie>
-      <Tooltip
-        contentStyle={tooltipStyle}
-        formatter={(v: number, _n: string, p: { payload?: { name?: string } }) => [fmtCurrency(v, currency), p.payload?.name ?? ""]}
-      />
-      <Legend
-        wrapperStyle={{ fontSize: 11, color: AXIS }}
-        iconType="circle"
-        formatter={(v: string) => (v.length > 22 ? `${v.slice(0, 22)}…` : v)}
-      />
-    </PieChart>
+    <ResponsiveContainer>
+      <PieChart>
+        <Pie
+          data={rows}
+          dataKey="value"
+          nameKey="name"
+          innerRadius={50}
+          outerRadius={80}
+          paddingAngle={2}
+          stroke="none"
+        >
+          {rows.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+        </Pie>
+        <Tooltip
+          contentStyle={tooltipStyle}
+          formatter={(v: number, _n: string, p: { payload?: { name?: string } }) => [fmtCurrency(v, currency), p.payload?.name ?? ""]}
+        />
+        <Legend
+          wrapperStyle={{ fontSize: 11, color: AXIS }}
+          iconType="circle"
+          formatter={(v: string) => (v.length > 22 ? `${v.slice(0, 22)}…` : v)}
+        />
+      </PieChart>
+    </ResponsiveContainer>
   );
 }
 
@@ -535,68 +541,86 @@ function PieResults({
   breakdown: Record<string, number>;
   isProfileMode: boolean;
 }) {
+  // Try profile visits first when in profile mode; otherwise, fall back to
+  // conversion breakdown, then to conversions-by-campaign — whichever has data.
   let rows: { name: string; value: number }[] = [];
   if (isProfileMode) {
     const top = [...campaigns]
       .filter((c) => c.profile_visits > 0)
       .sort((a, b) => b.profile_visits - a.profile_visits)
       .slice(0, 6);
-    const other = campaigns.slice(6).reduce((s, c) => s + c.profile_visits, 0);
     rows = top.map((c) => ({ name: c.campaign_name, value: c.profile_visits }));
-    if (other > 0) rows.push({ name: "Outras", value: other });
-  } else {
+  }
+  if (rows.length === 0) {
     rows = Object.entries(breakdown)
       .filter(([, v]) => v > 0)
       .sort((a, b) => b[1] - a[1])
       .map(([name, value]) => ({ name, value }));
   }
+  if (rows.length === 0) {
+    rows = [...campaigns]
+      .filter((c) => c.conversions > 0)
+      .sort((a, b) => b.conversions - a.conversions)
+      .slice(0, 6)
+      .map((c) => ({ name: c.campaign_name, value: c.conversions }));
+  }
   const total = rows.reduce((s, r) => s + r.value, 0);
   if (total === 0) return <EmptyChart />;
   return (
-    <PieChart>
-      <Pie
-        data={rows}
-        dataKey="value"
-        nameKey="name"
-        outerRadius={90}
-        stroke="none"
-        label={({ percent }: { percent?: number }) => percent && percent > 0.06 ? `${(percent * 100).toFixed(0)}%` : ""}
-      >
-        {rows.map((_, i) => <Cell key={i} fill={PALETTE[(i + 1) % PALETTE.length]} />)}
-      </Pie>
-      <Tooltip
-        contentStyle={tooltipStyle}
-        formatter={(v: number, _n: string, p: { payload?: { name?: string } }) => [fmtNumber(v), p.payload?.name ?? ""]}
-      />
-      <Legend
-        wrapperStyle={{ fontSize: 11, color: AXIS }}
-        iconType="circle"
-        formatter={(v: string) => (v.length > 22 ? `${v.slice(0, 22)}…` : v)}
-      />
-    </PieChart>
+    <ResponsiveContainer>
+      <PieChart>
+        <Pie
+          data={rows}
+          dataKey="value"
+          nameKey="name"
+          outerRadius={80}
+          stroke="none"
+          label={({ percent }: { percent?: number }) => percent && percent > 0.06 ? `${(percent * 100).toFixed(0)}%` : ""}
+        >
+          {rows.map((_, i) => <Cell key={i} fill={PALETTE[(i + 1) % PALETTE.length]} />)}
+        </Pie>
+        <Tooltip
+          contentStyle={tooltipStyle}
+          formatter={(v: number, _n: string, p: { payload?: { name?: string } }) => [fmtNumber(v), p.payload?.name ?? ""]}
+        />
+        <Legend
+          wrapperStyle={{ fontSize: 11, color: AXIS }}
+          iconType="circle"
+          formatter={(v: string) => (v.length > 22 ? `${v.slice(0, 22)}…` : v)}
+        />
+      </PieChart>
+    </ResponsiveContainer>
   );
 }
 
 function CampaignBars({ campaigns, isProfileMode }: { campaigns: CampaignLike[]; isProfileMode: boolean }) {
+  // Pick whichever result metric actually has data across campaigns.
+  const totalProfile = campaigns.reduce((s, c) => s + c.profile_visits, 0);
+  const totalConv = campaigns.reduce((s, c) => s + c.conversions, 0);
+  const useProfile = isProfileMode && totalProfile > 0;
+  const useConv = !useProfile && totalConv > 0;
   const rows = campaigns
     .map((c) => ({
       name: c.campaign_name.length > 22 ? `${c.campaign_name.slice(0, 22)}…` : c.campaign_name,
-      value: isProfileMode ? c.profile_visits : c.conversions,
+      value: useProfile ? c.profile_visits : useConv ? c.conversions : c.spend,
     }))
     .filter((r) => r.value > 0)
     .sort((a, b) => b.value - a.value)
     .slice(0, 6);
   if (rows.length === 0) return <EmptyChart />;
+  const label = useProfile ? "Visitas" : useConv ? "Resultados" : "Investimento";
   return (
-    <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-      <CartesianGrid stroke={GRID} strokeDasharray="3 3" horizontal={false} />
-      <XAxis type="number" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} />
-      <YAxis type="category" dataKey="name" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} width={130} />
-      <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [fmtNumber(v), isProfileMode ? "Visitas" : "Resultados"]} />
-      <Bar dataKey="value" radius={[0, 6, 6, 0]}>
-        {rows.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
-      </Bar>
-    </BarChart>
+    <ResponsiveContainer>
+      <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+        <CartesianGrid stroke={GRID} strokeDasharray="3 3" horizontal={false} />
+        <XAxis type="number" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} />
+        <YAxis type="category" dataKey="name" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} width={130} />
+        <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [fmtNumber(v), label]} />
+        <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+          {rows.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
   );
 }
 
