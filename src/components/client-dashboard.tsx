@@ -338,23 +338,29 @@ export function ClientDashboardView({
 
           {/* Daily evolution line — spend + clicks */}
           {series.length > 1 && (
-            <div className="mt-6">
-              <ChartCard title="Evolução diária" subtitle="Investimento e cliques por dia" tall>
-                <LineChart data={series} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                  <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" stroke={AXIS} fontSize={11} tickFormatter={(d: string) => d.slice(5)} tickLine={false} axisLine={false} />
-                  <YAxis yAxisId="left" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis yAxisId="right" orientation="right" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={tooltipStyle}
-                    labelStyle={{ color: AXIS }}
-                    formatter={(v: number, k: string) => k === "spend" ? [fmtCurrency(v, currency), "Investimento"] : [fmtNumber(v), "Cliques"]}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 12, color: AXIS }} />
-                  <Line yAxisId="left" type="monotone" dataKey="spend" name="Investimento" stroke={PALETTE[0]} strokeWidth={2.5} dot={false} />
-                  <Line yAxisId="right" type="monotone" dataKey="clicks" name="Cliques" stroke={PALETTE[1]} strokeWidth={2.5} dot={false} />
-                </LineChart>
-              </ChartCard>
+            <div className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-card">
+              <div className="mb-2">
+                <p className="text-sm font-semibold">Evolução diária</p>
+                <p className="text-[11px] text-muted-foreground">Investimento e cliques por dia</p>
+              </div>
+              <div className="h-72 w-full">
+                <ResponsiveContainer>
+                  <LineChart data={series} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" stroke={AXIS} fontSize={11} tickFormatter={(d: string) => d.slice(5)} tickLine={false} axisLine={false} />
+                    <YAxis yAxisId="left" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis yAxisId="right" orientation="right" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      labelStyle={{ color: AXIS }}
+                      formatter={(v: number, k: string) => k === "spend" ? [fmtCurrency(v, currency), "Investimento"] : [fmtNumber(v), "Cliques"]}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12, color: AXIS }} />
+                    <Line yAxisId="left" type="monotone" dataKey="spend" name="Investimento" stroke={PALETTE[0]} strokeWidth={2.5} dot={false} />
+                    <Line yAxisId="right" type="monotone" dataKey="clicks" name="Cliques" stroke={PALETTE[1]} strokeWidth={2.5} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           )}
 
