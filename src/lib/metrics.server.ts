@@ -171,9 +171,19 @@ export async function computeClientDashboard(supabase: SupabaseClient<any>, clie
       const token = tokenMap.get(r.account.connection_id);
       if (!token) return;
       try {
+        // Build a campaign→objective map from base.campaigns for this account's campaigns
+        // (base.campaigns is already the combined list from all accounts, but campaign_id is unique)
+        const campaignMeta = new Map<string, { objective: string | null; optimization_goal: string | null; destination_type: string | null }>();
+        for (const c of base.campaigns) {
+          campaignMeta.set(c.campaign_id, {
+            objective: c.objective,
+            optimization_goal: c.optimization_goal,
+            destination_type: c.destination_type,
+          });
+        }
         const [d, a, prev] = await Promise.all([
           fetchAdAccountDaily({ token, externalAccountId: r.account.external_account_id, datePreset }),
-          fetchAdAccountAds({ token, externalAccountId: r.account.external_account_id, datePreset }),
+          fetchAdAccountAds({ token, externalAccountId: r.account.external_account_id, datePreset, campaignMeta }),
           prevRange
             ? fetchAdAccountInsights({ token, externalAccountId: r.account.external_account_id, timeRange: prevRange }).catch(() => null)
             : Promise.resolve(null),

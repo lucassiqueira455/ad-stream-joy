@@ -1,90 +1,84 @@
-## 1. Modelo de dados
+## Objetivo
 
-Adicionar coluna `dashboard_token` em `client_shares` (o `token` atual continua sendo o do Relatório). Cada cliente passa a ter dois tokens independentes:
+Corrigir dados de "Visitas ao Perfil" e reestruturar o Dashboard para agrupar campanhas automaticamente por **objetivo**, com rankings, gráficos e tooltips independentes por grupo. Nada de comparação entre objetivos diferentes.
 
-- `/report/<token>` → Relatório (mantém como hoje)
-- `/dashboard/<dashboard_token>` → Dashboard (novo)
+---
 
-Regenerar/desativar são independentes por link. Ambos usam o campo `active` compartilhado — botão único de ativar/desativar compartilhamento vale pros dois.
+## 1. Dados: puxar corretamente Visitas ao Perfil da Meta
 
-Migration:
+Hoje `fetchAdAccountCampaigns` só lê `actions`/`conversions` e infere Visitas ao Perfil via `maxActionValueWhere(isProfileVisitType)`. Isso diverge do Gerenciador de Anúncios quando a Meta reporta o resultado no campo `results` (com `indicator` = `profile_visit_view`) e o custo em `cost_per_result` — exatamente o número que aparece na coluna "Resultados" do Ads Manager.
+
+Ajustes em `src/lib/meta.server.ts`:
+
+- Em `fetchAdAccountCampaigns`:
+  - Adicionar `results`, `cost_per_result` aos `fields` do insights por campanha.
+  - Adicionar `objective`, `optimization_goal`, `destination_type`, `effective_status` ao GET `/campaigns`.
+  - Prioridade para `profile_visits`:
+    1. `results` onde `indicator` corresponde a `profile_visit*` (usar `resultValue`).
+    2. `maxActionValueWhere(isProfileVisitType)` como fallback.
+  - Prioridade para `cost_per_profile_visit`:
+    1. `cost_per_result` no mesmo indicador (média ponderada por `profile_visits`).
+    2. `spend / profile_visits`.
+- `CampaignRow` ganha: `objective`, `optimization_goal`, `destination_type`.
+- Fazer o mesmo em `fetchAdAccountAds` (herdar `objective` da campanha via um `campaignMetaMap`).
+
+## 2. Classificação automática por objetivo
+
+Novo helper `classifyCampaign(c: CampaignRow)` retornando uma `GroupKey`:
+
+- `profile_visits` — `destination_type` contém `INSTAGRAM_PROFILE`/`ON_PAGE` **ou** `optimization_goal` = `PROFILE_VISIT`/`VISIT_INSTAGRAM_PROFILE` **ou** `profile_visits > 0 && profile_visits >= conversions`.
+- `leads` — `objective` casa `LEAD|MESSAGE|CONVERSATION|CONVERSIONS`.
+- `sales` — `objective` casa `SALES|CATALOG|PURCHASE`.
+- `traffic` — `objective` casa `TRAFFIC|LINK_CLICKS`.
+- `video` — `objective` casa `VIDEO_VIEWS`.
+- `engagement` — `objective` casa `ENGAGEMENT|POST|PAGE_LIKES`.
+- `awareness` — `objective` casa `AWARENESS|REACH`.
+- fallback: infere pelos dados (`conversions>0`→leads, `clicks>0`→traffic, senão `other`).
+
+Cada grupo tem metadata (label, emoji, cor, métrica primária, métrica de custo, sort primário/secundário).
+
+Ex.: `leads` → primário "Resultado" (conversions), custo "Custo por Resultado", ordenar por conversions desc, custo asc. `profile_visits` → primário "Visitas", custo "Custo por Visita". `sales` → "Compras", "ROAS", "CPA". `traffic` → "Cliques no link", "CPC". `engagement` → "Engajamentos", "Custo por Engajamento". `video` → "Visualizações", "Custo por View".
+
+## 3. Redesenho do `ClientDashboardView`
+
+Manter blocos globais (KPIs, insights, funil, heatmap, comparativo entre períodos) porque agregam a conta inteira. **Substituir** as seções de "Distribuição", "Rankings", "Comparativos entre campanhas", "Investimento vs Resultados" e "Destaques" por uma nova estrutura:
+
+```text
+┌─ [emoji] Nome do grupo · N campanhas · Objetivo Meta ─┐
+│  KPIs mínimos: Investimento, Resultado, Custo, CTR   │
+│  ┌──────────────┬──────────────┬─────────────┐       │
+│  │ Donut Invest │ Barras Result│ Pizza Result│       │
+│  └──────────────┴──────────────┴─────────────┘       │
+│  Ranking de campanhas (do grupo, top 10)             │
+│  Ranking de criativos (do grupo, top 10)             │
+└───────────────────────────────────────────────────────┘
 ```
-ALTER TABLE public.client_shares
-  ADD COLUMN dashboard_token text UNIQUE;
-UPDATE public.client_shares SET dashboard_token = encode(gen_random_bytes(32),'base64') ...;
-```
 
-## 2. Backend
+Renderizar uma seção dessas por grupo presente na conta. Ordem: leads → sales → profile_visits → traffic → engagement → video → awareness → other.
 
-`src/lib/meta.server.ts`: adicionar duas novas funções (usa Graph API v21):
-- `fetchAdAccountDaily(token, externalAccountId, datePreset)` → série diária `[{ date, spend, impressions, clicks, ctr, cpc, conversions }]` via `/insights?time_increment=1`.
-- `fetchAdAccountCampaigns(token, externalAccountId, datePreset)` → top campanhas com `spend, ctr, conversions, cpa` via `/insights?level=campaign` + `fields=campaign_name,...`.
-- `fetchAdAccountAds(token, externalAccountId, datePreset)` → top ads com criativo (thumbnail via `ad.creative{thumbnail_url}`) + métricas via `/insights?level=ad`.
+## 4. Tooltips completos
 
-`src/lib/metrics.server.ts`: adicionar `computeClientDashboard(supabase, clientId, datePreset)` que agrega das contas (mesmo padrão de `computeClientMetrics`) mas retorna `{ totals, currency, series, topCampaigns, topAds, lastSyncedAt }`.
+Criar `<CampaignTooltip>` (Recharts custom `content`) usado em **todos** os gráficos que plotam campanhas (donut, barras, pizza, stacked). Mostra:
 
-`src/lib/shares.functions.ts`:
-- Novo `getPublicDashboard({ token, datePreset })` — valida `dashboard_token`, chama `computeClientDashboard`.
-- Estender `createOrRegenerateShare` para aceitar `kind: "report" | "dashboard"` e regenerar só o token pedido.
-- `getClientShare` retorna também `dashboard_token`.
+- Nome completo da campanha
+- Objetivo (rótulo em pt-BR)
+- Resultado principal do grupo (com label)
+- Investimento
+- Custo por resultado
+- Participação no total (%) do dataset atual
 
-`ads-connections.functions.ts`: novo `getClientDashboard({ clientId, datePreset })` autenticado.
+Passar o dataset com os objetos completos (não só `{name, value}`) para que o tooltip tenha contexto. Para o donut de investimento, `value = spend`; a `share` é calculada sobre `sum(spend)`.
 
-## 3. Frontend
+## 5. Ajustes secundários
 
-### Página do cliente (admin)
+- `Highlights`, `WeekdayHeatmap`, `PeriodComparison`, `Funnel` continuam a nível de conta — mantidos.
+- `StackedCompare` removido do topo (comparava campanhas de objetivos diferentes); pode reaparecer dentro de cada grupo como opção futura, mas fora do escopo agora.
+- `ComparisonBars` de CTR/CPC também sai de fora dos grupos; nada é comparado entre objetivos.
 
-Em `_authenticated.app.clients.$clientId.tsx`, envolver `<ClientMetrics />` num container de abas:
+## Arquivos afetados
 
-```
-[ Relatório | Dashboard ]
-```
+- `src/lib/meta.server.ts` — extensão de `CampaignRow`/`AdRow`, fetchers, priorização de `results`/`cost_per_result` para visitas.
+- `src/lib/metrics.server.ts` — passar novos campos adiante (nenhuma mudança de lógica agregada).
+- `src/components/client-dashboard.tsx` — novo agrupamento, componente `<ObjectiveGroup>`, `<CampaignTooltip>`, remover comparativos cross-objetivo.
 
-- Aba **Relatório** → `<ClientMetrics />` atual (nada muda).
-- Aba **Dashboard** → novo componente `<ClientDashboardView />`.
-
-Atualizar `ShareReportCard` para mostrar dois blocos: "Link do Relatório" e "Link do Dashboard", cada um com Copiar / Regenerar próprios. Um único toggle Ativar/Desativar para ambos + toggle de permitir mudar período.
-
-### Novo componente `src/components/client-dashboard.tsx`
-
-Layout limpo, focado em visual:
-- Header com "Atualizado há X min" (calcular de `lastSyncedAt`).
-- Seletor de período (se `allowDateChange`).
-- Grade de cards: Investimento, Conversões, Custo/Conversão, Impressões, Alcance, Cliques, CTR, CPC, CPM. Reusa `MetricCard`.
-- 4 gráficos (Recharts, `LineChart` / `AreaChart`): Investimento diário, Conversões diárias, CTR diário, CPC diário.
-- Tabela **Melhores campanhas** — nome, conversões, CPA, investimento, CTR, ordenado por conversões desc.
-- Tabela **Melhores anúncios** — thumbnail (img), nome, conversões, CPA, CTR, investimento.
-
-### Nova rota pública `src/routes/dashboard.$token.tsx`
-
-Mesmo padrão de `report.$token.tsx` (`ssr:false`, sem AppShell, header minimalista com logo do cliente + plataforma). Renderiza `<ClientDashboardView publicToken={token} allowDateChange=... />`.
-
-## 4. Segurança
-
-- Tokens de 32 bytes aleatórios (crypto.randomBytes), base64url.
-- Regenerar dashboard não afeta relatório e vice-versa.
-- Endpoints públicos `getPublicReport`/`getPublicDashboard` sem auth, validam token via `supabaseAdmin` antes de qualquer read.
-- Nenhuma escrita a partir dos endpoints públicos.
-
-## 5. Arquivos
-
-Novos:
-- `supabase/migrations/<ts>_client_shares_dashboard_token.sql`
-- `src/components/client-dashboard.tsx`
-- `src/routes/dashboard.$token.tsx`
-
-Editados:
-- `src/lib/meta.server.ts` (novas fetchers)
-- `src/lib/metrics.server.ts` (`computeClientDashboard`)
-- `src/lib/shares.functions.ts` (dashboard token + `getPublicDashboard`)
-- `src/lib/ads-connections.functions.ts` (`getClientDashboard`)
-- `src/components/share-report-card.tsx` (dois blocos)
-- `src/routes/_authenticated.app.clients.$clientId.tsx` (tabs)
-
-## Notas técnicas
-
-- "Atualizado há X min": como o app não guarda cache no banco, `lastSyncedAt = Date.now()` no momento da chamada (a Meta responde ao vivo). Suficiente pra UX pedida.
-- Top ads: campo `creative{thumbnail_url,image_url}` na Meta Ads API. Se `thumbnail_url` faltar, cai para placeholder.
-- Reaproveita `datePreset` e formatação já existentes.
-
-Confirma pra eu implementar?
+Sem migrations. Sem novas rotas. Sem novos server functions.

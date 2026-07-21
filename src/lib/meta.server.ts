@@ -874,6 +874,8 @@ export type CampaignRow = {
   campaign_id: string;
   campaign_name: string;
   objective: string | null;
+  optimization_goal: string | null;
+  destination_type: string | null;
   status: string | null;
   spend: number;
   impressions: number;
@@ -886,6 +888,11 @@ export type CampaignRow = {
   cost_per_conversion: number;
   profile_visits: number;
   cost_per_profile_visit: number;
+  video_views: number;
+  cost_per_video_view: number;
+  page_engagement: number;
+  post_engagement: number;
+  cost_per_engagement: number;
 };
 
 export async function fetchAdAccountCampaigns(params: {
@@ -895,11 +902,14 @@ export async function fetchAdAccountCampaigns(params: {
 }): Promise<CampaignRow[]> {
   const { token, externalAccountId, datePreset = "last_30d" } = params;
 
-  // 1) Insights per campaign
   const insightsUrl = new URL(`${GRAPH}/act_${externalAccountId}/insights`);
   insightsUrl.searchParams.set(
     "fields",
-    ["campaign_id", "campaign_name", "spend", "impressions", "clicks", "inline_link_clicks", "ctr", "cpc", "cpm", "actions", "conversions"].join(","),
+    [
+      "campaign_id", "campaign_name",
+      "spend", "impressions", "clicks", "inline_link_clicks", "ctr", "cpc", "cpm",
+      "actions", "conversions", "results", "cost_per_result",
+    ].join(","),
   );
   insightsUrl.searchParams.set("date_preset", datePreset);
   insightsUrl.searchParams.set("use_unified_attribution_setting", "true");
@@ -911,7 +921,7 @@ export async function fetchAdAccountCampaigns(params: {
     fetch(insightsUrl.toString()),
     (() => {
       const u = new URL(`${GRAPH}/act_${externalAccountId}/campaigns`);
-      u.searchParams.set("fields", "id,name,objective,status,effective_status");
+      u.searchParams.set("fields", "id,name,objective,optimization_goal,destination_type,status,effective_status");
       u.searchParams.set("limit", "500");
       u.searchParams.set("access_token", token);
       return fetch(u.toString());
@@ -932,17 +942,24 @@ export async function fetchAdAccountCampaigns(params: {
       cpm?: string;
       actions?: MetaActionStat[];
       conversions?: MetaActionStat[];
+      results?: MetaResultStat[];
+      cost_per_result?: MetaResultStat[];
     }>;
   };
 
-  const meta = new Map<string, { objective: string | null; status: string | null }>();
+  const meta = new Map<string, { objective: string | null; optimization_goal: string | null; destination_type: string | null; status: string | null }>();
   if (metaRes.ok) {
     const mj = (await metaRes.json()) as {
-      data?: Array<{ id?: string; objective?: string; status?: string; effective_status?: string }>;
+      data?: Array<{ id?: string; objective?: string; optimization_goal?: string; destination_type?: string; status?: string; effective_status?: string }>;
     };
     for (const c of mj.data ?? []) {
       if (!c.id) continue;
-      meta.set(c.id, { objective: c.objective ?? null, status: c.effective_status ?? c.status ?? null });
+      meta.set(c.id, {
+        objective: c.objective ?? null,
+        optimization_goal: c.optimization_goal ?? null,
+        destination_type: c.destination_type ?? null,
+        status: c.effective_status ?? c.status ?? null,
+      });
     }
   }
 
@@ -954,12 +971,33 @@ export async function fetchAdAccountCampaigns(params: {
     const clicks = link_clicks || allClicks;
     const details = buildConversionDetails(row.actions, row.conversions);
     const conversions = Object.values(details.breakdown).reduce((s, v) => s + v, 0);
-    const profile_visits = maxActionValueWhere([row.actions, row.conversions], isProfileVisitType);
-    const m = meta.get(row.campaign_id ?? "") ?? { objective: null, status: null };
+
+    // Profile visits: prefer official `results`/`cost_per_result` (matches Ads Manager)
+    let profile_visits = (row.results ?? [])
+      .filter((r) => isProfileVisitResult(r.indicator))
+      .reduce((s, r) => s + resultValue(r), 0);
+    let cost_per_profile_visit = 0;
+    if (profile_visits > 0) {
+      const costEntry = (row.cost_per_result ?? []).find((r) => isProfileVisitResult(r.indicator));
+      if (costEntry) cost_per_profile_visit = resultValue(costEntry);
+      if (!cost_per_profile_visit) cost_per_profile_visit = spend / profile_visits;
+    } else {
+      profile_visits = maxActionValueWhere([row.actions, row.conversions], isProfileVisitType);
+      if (profile_visits > 0) cost_per_profile_visit = spend / profile_visits;
+    }
+
+    const video_views = sumActions(row.actions, VIDEO_VIEW_TYPES);
+    const page_engagement = sumActions(row.actions, PAGE_ENGAGEMENT_TYPES);
+    const post_engagement = sumActions(row.actions, POST_ENGAGEMENT_TYPES);
+    const engagementCountForCost = post_engagement || page_engagement;
+
+    const m = meta.get(row.campaign_id ?? "") ?? { objective: null, optimization_goal: null, destination_type: null, status: null };
     return {
       campaign_id: row.campaign_id ?? "",
       campaign_name: row.campaign_name ?? "—",
       objective: m.objective,
+      optimization_goal: m.optimization_goal,
+      destination_type: m.destination_type,
       status: m.status,
       spend,
       impressions,
@@ -971,7 +1009,12 @@ export async function fetchAdAccountCampaigns(params: {
       conversions,
       cost_per_conversion: conversions > 0 ? spend / conversions : 0,
       profile_visits,
-      cost_per_profile_visit: profile_visits > 0 ? spend / profile_visits : 0,
+      cost_per_profile_visit,
+      video_views,
+      cost_per_video_view: video_views > 0 ? spend / video_views : 0,
+      page_engagement,
+      post_engagement,
+      cost_per_engagement: engagementCountForCost > 0 ? spend / engagementCountForCost : 0,
     };
   });
 }
@@ -982,6 +1025,9 @@ export type AdRow = {
   ad_name: string;
   campaign_id: string;
   campaign_name: string;
+  objective: string | null;
+  optimization_goal: string | null;
+  destination_type: string | null;
   thumbnail_url: string | null;
   spend: number;
   impressions: number;
@@ -991,18 +1037,23 @@ export type AdRow = {
   cost_per_conversion: number;
   profile_visits: number;
   cost_per_profile_visit: number;
+  video_views: number;
+  cost_per_video_view: number;
+  post_engagement: number;
+  cost_per_engagement: number;
 };
 
 export async function fetchAdAccountAds(params: {
   token: string;
   externalAccountId: string;
   datePreset?: string;
+  campaignMeta?: Map<string, { objective: string | null; optimization_goal: string | null; destination_type: string | null }>;
 }): Promise<AdRow[]> {
-  const { token, externalAccountId, datePreset = "last_30d" } = params;
+  const { token, externalAccountId, datePreset = "last_30d", campaignMeta } = params;
   const url = new URL(`${GRAPH}/act_${externalAccountId}/insights`);
   url.searchParams.set(
     "fields",
-    ["ad_id", "ad_name", "campaign_id", "campaign_name", "spend", "impressions", "clicks", "inline_link_clicks", "ctr", "actions", "conversions"].join(","),
+    ["ad_id", "ad_name", "campaign_id", "campaign_name", "spend", "impressions", "clicks", "inline_link_clicks", "ctr", "actions", "conversions", "results", "cost_per_result"].join(","),
   );
   url.searchParams.set("date_preset", datePreset);
   url.searchParams.set("use_unified_attribution_setting", "true");
@@ -1025,6 +1076,8 @@ export async function fetchAdAccountAds(params: {
       ctr?: string;
       actions?: MetaActionStat[];
       conversions?: MetaActionStat[];
+      results?: MetaResultStat[];
+      cost_per_result?: MetaResultStat[];
     }>;
   };
 
@@ -1034,12 +1087,31 @@ export async function fetchAdAccountAds(params: {
     const clicks = Number(row.inline_link_clicks || row.clicks || 0);
     const details = buildConversionDetails(row.actions, row.conversions);
     const conversions = Object.values(details.breakdown).reduce((s, v) => s + v, 0);
-    const profile_visits = maxActionValueWhere([row.actions, row.conversions], isProfileVisitType);
+
+    let profile_visits = (row.results ?? [])
+      .filter((r) => isProfileVisitResult(r.indicator))
+      .reduce((s, r) => s + resultValue(r), 0);
+    let cost_per_profile_visit = 0;
+    if (profile_visits > 0) {
+      const costEntry = (row.cost_per_result ?? []).find((r) => isProfileVisitResult(r.indicator));
+      if (costEntry) cost_per_profile_visit = resultValue(costEntry);
+      if (!cost_per_profile_visit) cost_per_profile_visit = spend / profile_visits;
+    } else {
+      profile_visits = maxActionValueWhere([row.actions, row.conversions], isProfileVisitType);
+      if (profile_visits > 0) cost_per_profile_visit = spend / profile_visits;
+    }
+
+    const video_views = sumActions(row.actions, VIDEO_VIEW_TYPES);
+    const post_engagement = sumActions(row.actions, POST_ENGAGEMENT_TYPES);
+    const cm = campaignMeta?.get(row.campaign_id ?? "");
     return {
       ad_id: row.ad_id ?? "",
       ad_name: row.ad_name ?? "—",
       campaign_id: row.campaign_id ?? "",
       campaign_name: row.campaign_name ?? "",
+      objective: cm?.objective ?? null,
+      optimization_goal: cm?.optimization_goal ?? null,
+      destination_type: cm?.destination_type ?? null,
       thumbnail_url: null as string | null,
       spend,
       impressions,
@@ -1048,16 +1120,18 @@ export async function fetchAdAccountAds(params: {
       conversions,
       cost_per_conversion: conversions > 0 ? spend / conversions : 0,
       profile_visits,
-      cost_per_profile_visit: profile_visits > 0 ? spend / profile_visits : 0,
+      cost_per_profile_visit,
+      video_views,
+      cost_per_video_view: video_views > 0 ? spend / video_views : 0,
+      post_engagement,
+      cost_per_engagement: post_engagement > 0 ? spend / post_engagement : 0,
     };
   });
 
-  // Rank + fetch thumbnails for top 20 by conversions/profile_visits/spend
   rows.sort((a, b) =>
     (b.conversions + b.profile_visits) - (a.conversions + a.profile_visits) || (b.spend - a.spend),
   );
-  const top = rows.slice(0, 20);
-
+  const top = rows.slice(0, 30);
 
   await Promise.all(
     top.map(async (r) => {
