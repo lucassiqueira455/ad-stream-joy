@@ -23,16 +23,20 @@ import {
   Eye,
   Flame,
   Gauge,
+  Heart,
   Loader2,
   Megaphone,
   MousePointerClick,
   Percent,
+  PlayCircle,
   RefreshCcw,
+  ShoppingCart,
   Sparkles,
   Target,
   TrendingDown,
   TrendingUp,
   Trophy,
+  User,
   Users,
   Zap,
   type LucideIcon,
@@ -74,28 +78,191 @@ function timeAgo(ts: number): string {
   return `há ${h}h`;
 }
 
-// Vivid palette
 const PALETTE = [
-  "oklch(0.72 0.20 260)", // indigo
-  "oklch(0.75 0.18 165)", // green
-  "oklch(0.80 0.18 65)",  // amber
-  "oklch(0.70 0.22 25)",  // red
-  "oklch(0.75 0.18 300)", // magenta
-  "oklch(0.75 0.16 200)", // cyan
-  "oklch(0.72 0.18 100)", // olive
-  "oklch(0.75 0.20 350)", // pink
-  "oklch(0.70 0.20 220)", // blue
-  "oklch(0.78 0.16 140)", // lime
+  "oklch(0.72 0.20 260)",
+  "oklch(0.75 0.18 165)",
+  "oklch(0.80 0.18 65)",
+  "oklch(0.70 0.22 25)",
+  "oklch(0.75 0.18 300)",
+  "oklch(0.75 0.16 200)",
+  "oklch(0.72 0.18 100)",
+  "oklch(0.75 0.20 350)",
+  "oklch(0.70 0.20 220)",
+  "oklch(0.78 0.16 140)",
 ];
 const AXIS = "oklch(0.65 0.02 250)";
 const GRID = "oklch(0.28 0.03 250)";
 
-const tooltipStyle = {
-  background: "oklch(0.18 0.03 250)",
-  border: `1px solid ${GRID}`,
-  borderRadius: 8,
-  fontSize: 12,
+// ---------------- Types ----------------
+
+type CampaignLike = {
+  campaign_id: string;
+  campaign_name: string;
+  objective: string | null;
+  optimization_goal: string | null;
+  destination_type: string | null;
+  status: string | null;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  link_clicks: number;
+  ctr: number;
+  cpc: number;
+  cpm: number;
+  conversions: number;
+  cost_per_conversion: number;
+  profile_visits: number;
+  cost_per_profile_visit: number;
+  video_views: number;
+  cost_per_video_view: number;
+  page_engagement: number;
+  post_engagement: number;
+  cost_per_engagement: number;
 };
+
+type AdLike = {
+  ad_id: string;
+  ad_name: string;
+  campaign_id: string;
+  campaign_name: string;
+  objective: string | null;
+  optimization_goal: string | null;
+  destination_type: string | null;
+  thumbnail_url: string | null;
+  spend: number;
+  ctr: number;
+  clicks: number;
+  conversions: number;
+  cost_per_conversion: number;
+  profile_visits: number;
+  cost_per_profile_visit: number;
+  video_views: number;
+  cost_per_video_view: number;
+  post_engagement: number;
+  cost_per_engagement: number;
+};
+
+// ---------------- Objective groups ----------------
+
+type GroupKey = "leads" | "profile_visits" | "traffic" | "engagement" | "video" | "sales" | "awareness" | "other";
+
+type GroupSpec = {
+  key: GroupKey;
+  label: string;
+  emoji: string;
+  icon: LucideIcon;
+  tone: string;
+  resultLabel: string;
+  costLabel: string;
+  pickResult: (c: CampaignLike) => number;
+  pickCost: (c: CampaignLike) => number;
+  pickResultAd: (a: AdLike) => number;
+  pickCostAd: (a: AdLike) => number;
+};
+
+const GROUPS: Record<GroupKey, GroupSpec> = {
+  leads: {
+    key: "leads", label: "Captação de Leads", emoji: "🎯", icon: Target, tone: PALETTE[1],
+    resultLabel: "Conversões", costLabel: "Custo por Conversão",
+    pickResult: (c) => c.conversions, pickCost: (c) => c.cost_per_conversion,
+    pickResultAd: (a) => a.conversions, pickCostAd: (a) => a.cost_per_conversion,
+  },
+  profile_visits: {
+    key: "profile_visits", label: "Visitas ao Perfil", emoji: "👤", icon: User, tone: PALETTE[4],
+    resultLabel: "Visitas ao Perfil", costLabel: "Custo por Visita",
+    pickResult: (c) => c.profile_visits, pickCost: (c) => c.cost_per_profile_visit,
+    pickResultAd: (a) => a.profile_visits, pickCostAd: (a) => a.cost_per_profile_visit,
+  },
+  traffic: {
+    key: "traffic", label: "Tráfego", emoji: "🚀", icon: MousePointerClick, tone: PALETTE[5],
+    resultLabel: "Cliques no Link", costLabel: "CPC",
+    pickResult: (c) => c.link_clicks || c.clicks, pickCost: (c) => c.cpc,
+    pickResultAd: (a) => a.clicks, pickCostAd: (a) => a.clicks > 0 ? a.spend / a.clicks : 0,
+  },
+  engagement: {
+    key: "engagement", label: "Engajamento", emoji: "❤️", icon: Heart, tone: PALETTE[7],
+    resultLabel: "Engajamentos", costLabel: "Custo por Engajamento",
+    pickResult: (c) => c.post_engagement || c.page_engagement, pickCost: (c) => c.cost_per_engagement,
+    pickResultAd: (a) => a.post_engagement, pickCostAd: (a) => a.cost_per_engagement,
+  },
+  video: {
+    key: "video", label: "Visualizações de Vídeo", emoji: "▶️", icon: PlayCircle, tone: PALETTE[8],
+    resultLabel: "Visualizações", costLabel: "Custo por Visualização",
+    pickResult: (c) => c.video_views, pickCost: (c) => c.cost_per_video_view,
+    pickResultAd: (a) => a.video_views, pickCostAd: (a) => a.cost_per_video_view,
+  },
+  sales: {
+    key: "sales", label: "Vendas", emoji: "🛒", icon: ShoppingCart, tone: PALETTE[3],
+    resultLabel: "Compras", costLabel: "CPA",
+    pickResult: (c) => c.conversions, pickCost: (c) => c.cost_per_conversion,
+    pickResultAd: (a) => a.conversions, pickCostAd: (a) => a.cost_per_conversion,
+  },
+  awareness: {
+    key: "awareness", label: "Reconhecimento", emoji: "📢", icon: Megaphone, tone: PALETTE[2],
+    resultLabel: "Impressões", costLabel: "CPM",
+    pickResult: (c) => c.impressions, pickCost: (c) => c.cpm,
+    pickResultAd: () => 0, pickCostAd: () => 0,
+  },
+  other: {
+    key: "other", label: "Outros", emoji: "📊", icon: BarChart3, tone: PALETTE[6],
+    resultLabel: "Resultado", costLabel: "Custo",
+    pickResult: (c) => c.conversions || c.link_clicks || c.clicks, pickCost: (c) => c.cost_per_conversion || c.cpc,
+    pickResultAd: (a) => a.conversions || a.clicks, pickCostAd: (a) => a.cost_per_conversion,
+  },
+};
+
+const GROUP_ORDER: GroupKey[] = ["leads", "sales", "profile_visits", "traffic", "engagement", "video", "awareness", "other"];
+
+function classifyCampaign(c: CampaignLike): GroupKey {
+  const obj = (c.objective || "").toUpperCase();
+  const opt = (c.optimization_goal || "").toUpperCase();
+  const dest = (c.destination_type || "").toUpperCase();
+
+  // Profile visits — strongest signals first
+  if (opt.includes("PROFILE_VISIT") || opt === "VISIT_INSTAGRAM_PROFILE" || dest.includes("INSTAGRAM_PROFILE")) {
+    return "profile_visits";
+  }
+  if (c.profile_visits > 0 && c.profile_visits >= c.conversions) return "profile_visits";
+
+  if (/SALES|CATALOG|PURCHASE/.test(obj)) return "sales";
+  if (/LEAD|MESSAG|CONVERSATION|CONVERSION/.test(obj)) return "leads";
+  if (/VIDEO/.test(obj)) return "video";
+  if (/TRAFFIC|LINK_CLICKS/.test(obj)) return "traffic";
+  if (/ENGAGEMENT|POST_ENGAGEMENT|PAGE_LIKES/.test(obj)) return "engagement";
+  if (/AWARENESS|REACH|IMPRESSION/.test(obj)) return "awareness";
+
+  // Data-based fallback
+  if (c.conversions > 0) return "leads";
+  if (c.video_views > 0 && c.video_views > c.clicks) return "video";
+  if ((c.link_clicks || c.clicks) > 0) return "traffic";
+  return "other";
+}
+
+function objectiveLabel(objective: string | null): string {
+  if (!objective) return "—";
+  const map: Record<string, string> = {
+    OUTCOME_LEADS: "Leads",
+    OUTCOME_SALES: "Vendas",
+    OUTCOME_TRAFFIC: "Tráfego",
+    OUTCOME_ENGAGEMENT: "Engajamento",
+    OUTCOME_AWARENESS: "Reconhecimento",
+    OUTCOME_APP_PROMOTION: "Promoção de app",
+    LEAD_GENERATION: "Geração de Leads",
+    MESSAGES: "Mensagens",
+    CONVERSIONS: "Conversões",
+    LINK_CLICKS: "Cliques no Link",
+    POST_ENGAGEMENT: "Engajamento de Publicação",
+    PAGE_LIKES: "Curtidas na Página",
+    VIDEO_VIEWS: "Visualizações de Vídeo",
+    REACH: "Alcance",
+    BRAND_AWARENESS: "Reconhecimento de Marca",
+    PRODUCT_CATALOG_SALES: "Vendas por Catálogo",
+    APP_INSTALLS: "Instalações de App",
+    EVENT_RESPONSES: "Respostas a Eventos",
+    STORE_VISITS: "Visitas à Loja",
+  };
+  return map[objective] || objective.replace(/^OUTCOME_/, "").replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 // ---------------- KPI ----------------
 
@@ -109,50 +276,24 @@ function computeDelta(current: number, previous: number | undefined, higherIsBet
   return { value: change, better };
 }
 
-function KpiCard({
-  label, value, icon: Icon, tone, delta, hint,
-}: {
-  label: string;
-  value: string;
-  icon: LucideIcon;
-  tone: string;
-  delta: Delta;
-  hint?: string;
+function KpiCard({ label, value, icon: Icon, tone, delta, hint }: {
+  label: string; value: string; icon: LucideIcon; tone: string; delta: Delta; hint?: string;
 }) {
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-glow">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-25 blur-2xl transition-opacity group-hover:opacity-40"
-        style={{ background: tone }}
-      />
+      <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-25 blur-2xl transition-opacity group-hover:opacity-40" style={{ background: tone }} />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-            {label}
-          </p>
-          <p className="mt-2 font-display text-2xl font-bold tabular-nums md:text-3xl">
-            {value}
-          </p>
-          {hint ? (
-            <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>
-          ) : null}
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</p>
+          <p className="mt-2 font-display text-2xl font-bold tabular-nums md:text-3xl">{value}</p>
+          {hint ? <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p> : null}
         </div>
-        <div
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-background shadow-sm"
-          style={{ backgroundColor: tone }}
-        >
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-background shadow-sm" style={{ backgroundColor: tone }}>
           <Icon className="h-5 w-5" />
         </div>
       </div>
       {delta ? (
-        <div
-          className={`relative mt-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
-            delta.better
-              ? "bg-success/15 text-success"
-              : "bg-destructive/15 text-destructive"
-          }`}
-        >
+        <div className={`relative mt-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${delta.better ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
           {delta.value >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
           {Math.abs(delta.value).toFixed(1)}%
           <span className="ml-1 font-normal text-muted-foreground">vs. anterior</span>
@@ -163,8 +304,6 @@ function KpiCard({
     </div>
   );
 }
-
-// ---------------- Section shell ----------------
 
 function SectionTitle({ icon: Icon, title, subtitle }: { icon: LucideIcon; title: string; subtitle?: string }) {
   return (
@@ -181,23 +320,61 @@ function SectionTitle({ icon: Icon, title, subtitle }: { icon: LucideIcon; title
 }
 
 function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`rounded-2xl border border-border bg-card p-5 shadow-card ${className}`}>{children}</div>;
+}
+
+// ---------------- Tooltip ----------------
+
+type ChartDatum = {
+  name: string;
+  value: number;
+  campaign: CampaignLike;
+  group: GroupSpec;
+  totalValue: number;
+  currency: string | null;
+  valueKind: "spend" | "result";
+};
+
+function CampaignTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload?: ChartDatum }> }) {
+  if (!active || !payload || payload.length === 0) return null;
+  const d = payload[0].payload;
+  if (!d) return null;
+  const { campaign, group, totalValue, currency, valueKind, value } = d;
+  const share = totalValue > 0 ? (value / totalValue) * 100 : 0;
+  const result = group.pickResult(campaign);
+  const cost = group.pickCost(campaign);
   return (
-    <div className={`rounded-2xl border border-border bg-card p-5 shadow-card ${className}`}>{children}</div>
+    <div className="rounded-xl border border-border bg-card/95 p-3 text-xs shadow-card backdrop-blur-sm" style={{ minWidth: 240, maxWidth: 320 }}>
+      <p className="mb-1 font-semibold leading-tight" style={{ color: group.tone }}>{campaign.campaign_name}</p>
+      <p className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+        {group.emoji} {objectiveLabel(campaign.objective) || group.label}
+      </p>
+      <dl className="grid grid-cols-2 gap-x-3 gap-y-1">
+        <dt className="text-muted-foreground">{group.resultLabel}</dt>
+        <dd className="text-right font-semibold tabular-nums">{fmtNumber(result)}</dd>
+        <dt className="text-muted-foreground">Investimento</dt>
+        <dd className="text-right font-semibold tabular-nums">{fmtCurrency(campaign.spend, currency)}</dd>
+        <dt className="text-muted-foreground">{group.costLabel}</dt>
+        <dd className="text-right font-semibold tabular-nums">{fmtCurrency(cost, currency)}</dd>
+        {totalValue > 0 && (
+          <>
+            <dt className="text-muted-foreground">Participação</dt>
+            <dd className="text-right font-semibold tabular-nums">
+              {share.toFixed(1)}% <span className="text-muted-foreground">({valueKind === "spend" ? "invest." : "result."})</span>
+            </dd>
+          </>
+        )}
+      </dl>
+    </div>
   );
 }
 
 // ---------------- Main ----------------
 
 export function ClientDashboardView({
-  clientId,
-  hasAccounts,
-  publicToken,
-  allowDateChange = true,
+  clientId, hasAccounts, publicToken, allowDateChange = true,
 }: {
-  clientId: string;
-  hasAccounts: boolean;
-  publicToken?: string;
-  allowDateChange?: boolean;
+  clientId: string; hasAccounts: boolean; publicToken?: string; allowDateChange?: boolean;
 }) {
   const [datePreset, setDatePreset] = useState<DatePreset>("last_30d");
   const [now, setNow] = useState(Date.now());
@@ -229,12 +406,48 @@ export function ClientDashboardView({
   const prev = data?.previousTotals ?? null;
   const currency = data?.currency ?? null;
   const series = data?.series ?? [];
-  const topCampaigns = data?.topCampaigns ?? [];
-  const topAds = data?.topAds ?? [];
+  const topCampaigns = (data?.topCampaigns ?? []) as CampaignLike[];
+  const topAds = (data?.topAds ?? []) as AdLike[];
 
   const isProfileMode = !!totals && totals.profile_visits > totals.conversions;
-  const resultLabel = isProfileMode ? "Visitas ao perfil" : "Resultado principal";
-  const costLabel = isProfileMode ? "Custo por visita" : "Custo por resultado";
+
+  // Group campaigns by objective
+  const groupedCampaigns = useMemo(() => {
+    const map = new Map<GroupKey, CampaignLike[]>();
+    for (const c of topCampaigns) {
+      const k = classifyCampaign(c);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(c);
+    }
+    return map;
+  }, [topCampaigns]);
+
+  const groupedAds = useMemo(() => {
+    // Ads inherit their campaign's group
+    const camp2group = new Map<string, GroupKey>();
+    for (const c of topCampaigns) camp2group.set(c.campaign_id, classifyCampaign(c));
+    const map = new Map<GroupKey, AdLike[]>();
+    for (const a of topAds) {
+      const k = camp2group.get(a.campaign_id) ?? classifyCampaign({
+        campaign_id: a.campaign_id, campaign_name: a.campaign_name,
+        objective: a.objective, optimization_goal: a.optimization_goal, destination_type: a.destination_type,
+        status: null, spend: a.spend, impressions: 0, clicks: a.clicks, link_clicks: 0,
+        ctr: a.ctr, cpc: 0, cpm: 0,
+        conversions: a.conversions, cost_per_conversion: a.cost_per_conversion,
+        profile_visits: a.profile_visits, cost_per_profile_visit: a.cost_per_profile_visit,
+        video_views: a.video_views, cost_per_video_view: a.cost_per_video_view,
+        page_engagement: 0, post_engagement: a.post_engagement, cost_per_engagement: a.cost_per_engagement,
+      });
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(a);
+    }
+    return map;
+  }, [topAds, topCampaigns]);
+
+  const activeGroups = useMemo(
+    () => GROUP_ORDER.filter((k) => (groupedCampaigns.get(k)?.length ?? 0) > 0),
+    [groupedCampaigns],
+  );
 
   const insights = useMemo(
     () => buildAutoInsights({ totals, prev, campaigns: topCampaigns, ads: topAds, isProfileMode, currency }),
@@ -249,9 +462,11 @@ export function ClientDashboardView({
     );
   }
 
+  const resultLabelGlobal = isProfileMode ? "Visitas ao perfil" : "Resultado principal";
+  const costLabelGlobal = isProfileMode ? "Custo por visita" : "Custo por resultado";
+
   return (
     <section className="mt-6 space-y-8">
-      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-display text-2xl font-bold">Dashboard</h2>
@@ -261,19 +476,11 @@ export function ClientDashboardView({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {allowDateChange && (
-            <select
-              value={datePreset}
-              onChange={(e) => setDatePreset(e.target.value as DatePreset)}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            >
+            <select value={datePreset} onChange={(e) => setDatePreset(e.target.value as DatePreset)} className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
               {DATE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           )}
-          <button
-            onClick={() => query.refetch()}
-            disabled={query.isFetching}
-            className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm hover:bg-accent"
-          >
+          <button onClick={() => query.refetch()} disabled={query.isFetching} className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm hover:bg-accent">
             {query.isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
             Atualizar
           </button>
@@ -294,7 +501,7 @@ export function ClientDashboardView({
         </div>
       ) : (
         <>
-          {/* 1 · KPIs */}
+          {/* Account-level KPIs */}
           {(() => {
             const resultValue = isProfileMode ? totals.profile_visits : totals.conversions;
             const prevResult = prev ? (isProfileMode ? prev.profile_visits : prev.conversions) : undefined;
@@ -309,8 +516,8 @@ export function ClientDashboardView({
             return (
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
                 <KpiCard label="💰 Investimento" value={fmtCurrency(totals.spend, currency)} icon={DollarSign} tone={PALETTE[0]} delta={computeDelta(totals.spend, prev?.spend, true)} />
-                <KpiCard label={`🎯 ${resultLabel}`} value={fmtNumber(resultValue)} icon={Trophy} tone={PALETTE[1]} delta={computeDelta(resultValue, prevResult, true)} />
-                <KpiCard label={`💵 ${costLabel}`} value={fmtCurrency(costValue, currency)} icon={Target} tone={PALETTE[3]} delta={computeDelta(costValue, prevCost, false)} />
+                <KpiCard label={`🎯 ${resultLabelGlobal}`} value={fmtNumber(resultValue)} icon={Trophy} tone={PALETTE[1]} delta={computeDelta(resultValue, prevResult, true)} />
+                <KpiCard label={`💵 ${costLabelGlobal}`} value={fmtCurrency(costValue, currency)} icon={Target} tone={PALETTE[3]} delta={computeDelta(costValue, prevCost, false)} />
                 <KpiCard label="👆 Cliques" value={fmtNumber(clicks)} icon={MousePointerClick} tone={PALETTE[5]} delta={computeDelta(clicks, prevClicks, true)} />
                 <KpiCard label="📈 Alcance" value={fmtNumber(totals.reach)} icon={Users} tone={PALETTE[4]} delta={computeDelta(totals.reach, prev?.reach, true)} />
                 <KpiCard label="👀 Impressões" value={fmtNumber(totals.impressions)} icon={Eye} tone={PALETTE[2]} delta={computeDelta(totals.impressions, prev?.impressions, true)} />
@@ -321,17 +528,13 @@ export function ClientDashboardView({
             );
           })()}
 
-          {/* 10 · Auto insights */}
           {insights.length > 0 && (
             <div>
               <SectionTitle icon={Sparkles} title="Insights automáticos" subtitle="Observações do período" />
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {insights.map((s, i) => (
                   <div key={i} className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 shadow-card">
-                    <div
-                      className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-background"
-                      style={{ backgroundColor: s.tone }}
-                    >
+                    <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-background" style={{ backgroundColor: s.tone }}>
                       <s.icon className="h-4 w-4" />
                     </div>
                     <p className="text-sm leading-snug">{s.text}</p>
@@ -341,52 +544,34 @@ export function ClientDashboardView({
             </div>
           )}
 
-          {/* 2 · Donut / Bars / Pie */}
-          <div>
-            <SectionTitle icon={BarChart3} title="Distribuição" subtitle="Como o orçamento e os resultados se dividem entre campanhas" />
-            <div className="grid gap-4 lg:grid-cols-3">
-              <Panel>
-                <ChartHeader title="Investimento por campanha" subtitle="Donut" />
-                <div className="h-72"><DonutSpend campaigns={topCampaigns} currency={currency} /></div>
-              </Panel>
-              <Panel>
-                <ChartHeader title="Top 10 campanhas por resultado" subtitle="Barras" />
-                <div className="h-72"><CampaignBars campaigns={topCampaigns} isProfileMode={isProfileMode} /></div>
-              </Panel>
-              <Panel>
-                <ChartHeader title={isProfileMode ? "Visitas por campanha" : "Resultados por campanha"} subtitle="Pizza" />
-                <div className="h-72"><PieResults campaigns={topCampaigns} breakdown={totals.conversions_breakdown} isProfileMode={isProfileMode} /></div>
-              </Panel>
-            </div>
-          </div>
+          {/* Per-objective groups */}
+          {activeGroups.map((key) => {
+            const spec = GROUPS[key];
+            const camps = groupedCampaigns.get(key) ?? [];
+            const ads = groupedAds.get(key) ?? [];
+            return (
+              <ObjectiveGroupSection
+                key={key}
+                spec={spec}
+                campaigns={camps}
+                ads={ads}
+                currency={currency}
+              />
+            );
+          })}
 
-          {/* 3 · Rankings */}
-          <div>
-            <SectionTitle icon={Trophy} title="Rankings" subtitle="Melhores campanhas e criativos" />
-            <div className="grid gap-4 xl:grid-cols-2">
-              <CampaignRanking campaigns={topCampaigns} currency={currency} />
-              <AdRanking ads={topAds} currency={currency} />
+          {activeGroups.length === 0 && (
+            <div className="rounded-xl border border-dashed border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">
+              Sem campanhas com dados no período.
             </div>
-          </div>
+          )}
 
-          {/* 4 · Comparisons */}
-          <div>
-            <SectionTitle icon={BarChart3} title="Comparativos entre campanhas" subtitle="Investimento, resultado, CTR e CPC lado a lado" />
-            <div className="grid gap-4 md:grid-cols-2">
-              <ComparisonBars title="Investimento" campaigns={topCampaigns} pick={(c) => c.spend} format={(v) => fmtCurrency(v, currency)} color={PALETTE[0]} />
-              <ComparisonBars title={isProfileMode ? "Visitas" : "Resultados"} campaigns={topCampaigns} pick={(c) => isProfileMode ? c.profile_visits : c.conversions} format={fmtNumber} color={PALETTE[1]} />
-              <ComparisonBars title="CTR" campaigns={topCampaigns} pick={(c) => c.ctr} format={fmtPercent} color={PALETTE[6]} />
-              <ComparisonBars title="CPC" campaigns={topCampaigns} pick={(c) => c.cpc} format={(v) => fmtCurrency(v, currency)} color={PALETTE[8]} lowerBetter />
-            </div>
-          </div>
-
-          {/* 5 · Funnel */}
+          {/* Global funnel */}
           <div>
             <SectionTitle icon={Gauge} title="Funil de performance" subtitle="Do impacto ao resultado" />
             <Funnel totals={totals} isProfileMode={isProfileMode} currency={currency} />
           </div>
 
-          {/* 6 · Heatmap (weekday) */}
           {series.length >= 3 && (
             <div>
               <SectionTitle icon={Flame} title="Mapa de calor semanal" subtitle="Dias da semana com mais resultados" />
@@ -394,25 +579,6 @@ export function ClientDashboardView({
             </div>
           )}
 
-          {/* 7 · Highlights */}
-          {topCampaigns.length > 0 && (
-            <div>
-              <SectionTitle icon={Award} title="Destaques" subtitle="Melhores marcas do período" />
-              <Highlights campaigns={topCampaigns} ads={topAds} currency={currency} isProfileMode={isProfileMode} />
-            </div>
-          )}
-
-          {/* 8 · Stacked bar */}
-          {topCampaigns.length > 0 && (
-            <div>
-              <SectionTitle icon={BarChart3} title="Investimento vs. Resultados" subtitle="Comparação empilhada por campanha" />
-              <Panel>
-                <div className="h-80"><StackedCompare campaigns={topCampaigns} isProfileMode={isProfileMode} /></div>
-              </Panel>
-            </div>
-          )}
-
-          {/* 9 · Period comparison */}
           {prev && (
             <div>
               <SectionTitle icon={TrendingUp} title="Comparativo entre períodos" subtitle="Período atual vs. anterior" />
@@ -425,113 +591,165 @@ export function ClientDashboardView({
   );
 }
 
-// ---------------- Sub components ----------------
+// ---------------- Objective group section ----------------
 
-function ChartHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+function ObjectiveGroupSection({
+  spec, campaigns, ads, currency,
+}: {
+  spec: GroupSpec;
+  campaigns: CampaignLike[];
+  ads: AdLike[];
+  currency: string | null;
+}) {
+  const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
+  const totalResult = campaigns.reduce((s, c) => s + spec.pickResult(c), 0);
+  const weightedCost = totalResult > 0 ? totalSpend / totalResult : 0;
+  const clicks = campaigns.reduce((s, c) => s + (c.link_clicks || c.clicks), 0);
+  const impressions = campaigns.reduce((s, c) => s + c.impressions, 0);
+  const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+
+  // Sort campaigns: primary metric desc, then cost asc, then spend desc
+  const sortedCampaigns = [...campaigns].sort((a, b) => {
+    const ra = spec.pickResult(a), rb = spec.pickResult(b);
+    if (rb !== ra) return rb - ra;
+    const ca = spec.pickCost(a), cb = spec.pickCost(b);
+    if (ca !== cb) {
+      if (ca === 0) return 1;
+      if (cb === 0) return -1;
+      return ca - cb;
+    }
+    return b.spend - a.spend;
+  });
+  const sortedAds = [...ads].sort((a, b) => {
+    const ra = spec.pickResultAd(a), rb = spec.pickResultAd(b);
+    if (rb !== ra) return rb - ra;
+    return b.spend - a.spend;
+  });
+
   return (
-    <div className="mb-2 flex items-baseline justify-between">
-      <p className="text-sm font-semibold">{title}</p>
-      {subtitle ? <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{subtitle}</p> : null}
+    <div className="rounded-2xl border border-border bg-card/40 p-5 md:p-6">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="grid h-11 w-11 place-items-center rounded-xl text-background text-xl" style={{ backgroundColor: spec.tone }}>
+            {spec.emoji}
+          </div>
+          <div>
+            <h3 className="font-display text-lg font-bold">{spec.label}</h3>
+            <p className="text-xs text-muted-foreground">
+              {campaigns.length} {campaigns.length === 1 ? "campanha" : "campanhas"} · Objetivo: {objectiveLabel(campaigns[0]?.objective ?? null)}
+            </p>
+          </div>
+        </div>
+      </header>
+
+      {/* Group KPIs */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <MiniKpi label="Investimento" value={fmtCurrency(totalSpend, currency)} tone={PALETTE[0]} icon={DollarSign} />
+        <MiniKpi label={spec.resultLabel} value={fmtNumber(totalResult)} tone={spec.tone} icon={spec.icon} />
+        <MiniKpi label={spec.costLabel} value={fmtCurrency(weightedCost, currency)} tone={PALETTE[3]} icon={Target} />
+        <MiniKpi label="CTR" value={fmtPercent(ctr)} tone={PALETTE[6]} icon={Percent} />
+      </div>
+
+      {/* Charts */}
+      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+        <Panel>
+          <ChartHeader title="Investimento por campanha" subtitle="Donut" />
+          <div className="h-64"><GroupDonut campaigns={sortedCampaigns} spec={spec} currency={currency} /></div>
+        </Panel>
+        <Panel>
+          <ChartHeader title={`Top campanhas · ${spec.resultLabel}`} subtitle="Barras" />
+          <div className="h-64"><GroupBars campaigns={sortedCampaigns} spec={spec} currency={currency} /></div>
+        </Panel>
+        <Panel>
+          <ChartHeader title={`Participação em ${spec.resultLabel.toLowerCase()}`} subtitle="Pizza" />
+          <div className="h-64"><GroupPie campaigns={sortedCampaigns} spec={spec} currency={currency} /></div>
+        </Panel>
+      </div>
+
+      {/* Rankings */}
+      <div className="mt-5 grid gap-4 xl:grid-cols-2">
+        <CampaignRanking campaigns={sortedCampaigns} spec={spec} currency={currency} />
+        <AdRanking ads={sortedAds} spec={spec} currency={currency} />
+      </div>
     </div>
   );
 }
 
-type CampaignLike = {
-  campaign_id: string;
-  campaign_name: string;
-  spend: number;
-  ctr: number;
-  cpc: number;
-  clicks: number;
-  impressions: number;
-  conversions: number;
-  cost_per_conversion: number;
-  profile_visits: number;
-  cost_per_profile_visit: number;
-};
+function MiniKpi({ label, value, tone, icon: Icon }: { label: string; value: string; tone: string; icon: LucideIcon }) {
+  return (
+    <div className="rounded-xl border border-border bg-background/50 p-3">
+      <div className="flex items-center gap-2">
+        <div className="grid h-7 w-7 place-items-center rounded-lg text-background" style={{ backgroundColor: tone }}>
+          <Icon className="h-3.5 w-3.5" />
+        </div>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</p>
+      </div>
+      <p className="mt-2 font-display text-lg font-bold tabular-nums">{value}</p>
+    </div>
+  );
+}
 
-type AdLike = {
-  ad_id: string;
-  ad_name: string;
-  campaign_name: string;
-  thumbnail_url: string | null;
-  spend: number;
-  ctr: number;
-  conversions: number;
-  cost_per_conversion: number;
-  profile_visits: number;
-  cost_per_profile_visit: number;
-};
+// ---------------- Group charts ----------------
 
-function DonutSpend({ campaigns, currency }: { campaigns: CampaignLike[]; currency: string | null }) {
-  const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
-  const top = [...campaigns].sort((a, b) => b.spend - a.spend).slice(0, 6);
-  const other = campaigns.slice(6).reduce((s, c) => s + c.spend, 0);
-  const rows = top.filter((c) => c.spend > 0).map((c) => ({ name: c.campaign_name, value: c.spend }));
-  if (other > 0) rows.push({ name: "Outras", value: other });
-  if (totalSpend === 0 || rows.length === 0) return <EmptyChart />;
+function buildChartData(campaigns: CampaignLike[], spec: GroupSpec, kind: "spend" | "result", currency: string | null): ChartDatum[] {
+  const values = campaigns.map((c) => kind === "spend" ? c.spend : spec.pickResult(c));
+  const total = values.reduce((s, v) => s + v, 0);
+  const items: ChartDatum[] = campaigns.map((c, i) => ({
+    name: c.campaign_name,
+    value: values[i],
+    campaign: c,
+    group: spec,
+    totalValue: total,
+    currency,
+    valueKind: kind,
+  })).filter((d) => d.value > 0);
+  return items;
+}
+
+function GroupDonut({ campaigns, spec, currency }: { campaigns: CampaignLike[]; spec: GroupSpec; currency: string | null }) {
+  const rows = buildChartData(campaigns, spec, "spend", currency).slice(0, 8);
+  if (rows.length === 0) return <EmptyChart />;
   return (
     <ResponsiveContainer>
       <PieChart>
-        <Pie data={rows} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={2} stroke="none">
+        <Pie data={rows} dataKey="value" nameKey="name" innerRadius={45} outerRadius={80} paddingAngle={2} stroke="none">
           {rows.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
         </Pie>
-        <Tooltip contentStyle={tooltipStyle} formatter={(v: number, _n: string, p: { payload?: { name?: string } }) => [fmtCurrency(v, currency), p.payload?.name ?? ""]} />
-        <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} iconType="circle" formatter={(v: string) => (v.length > 22 ? `${v.slice(0, 22)}…` : v)} />
+        <Tooltip content={<CampaignTooltip />} />
+        <Legend wrapperStyle={{ fontSize: 10, color: AXIS }} iconType="circle" formatter={(v: string) => (v.length > 22 ? `${v.slice(0, 22)}…` : v)} />
       </PieChart>
     </ResponsiveContainer>
   );
 }
 
-function PieResults({ campaigns, breakdown, isProfileMode }: { campaigns: CampaignLike[]; breakdown: Record<string, number>; isProfileMode: boolean }) {
-  let rows: { name: string; value: number }[] = [];
-  if (isProfileMode) {
-    const top = [...campaigns].filter((c) => c.profile_visits > 0).sort((a, b) => b.profile_visits - a.profile_visits).slice(0, 6);
-    rows = top.map((c) => ({ name: c.campaign_name, value: c.profile_visits }));
-  }
-  if (rows.length === 0) {
-    rows = Object.entries(breakdown).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
-  }
-  if (rows.length === 0) {
-    rows = [...campaigns].filter((c) => c.conversions > 0).sort((a, b) => b.conversions - a.conversions).slice(0, 6).map((c) => ({ name: c.campaign_name, value: c.conversions }));
-  }
-  const total = rows.reduce((s, r) => s + r.value, 0);
-  if (total === 0) return <EmptyChart />;
+function GroupPie({ campaigns, spec, currency }: { campaigns: CampaignLike[]; spec: GroupSpec; currency: string | null }) {
+  const rows = buildChartData(campaigns, spec, "result", currency).slice(0, 8);
+  if (rows.length === 0) return <EmptyChart />;
   return (
     <ResponsiveContainer>
       <PieChart>
-        <Pie data={rows} dataKey="value" nameKey="name" outerRadius={90} stroke="none" label={({ percent }: { percent?: number }) => percent && percent > 0.06 ? `${(percent * 100).toFixed(0)}%` : ""}>
+        <Pie data={rows} dataKey="value" nameKey="name" outerRadius={80} stroke="none" label={({ percent }: { percent?: number }) => percent && percent > 0.06 ? `${(percent * 100).toFixed(0)}%` : ""}>
           {rows.map((_, i) => <Cell key={i} fill={PALETTE[(i + 1) % PALETTE.length]} />)}
         </Pie>
-        <Tooltip contentStyle={tooltipStyle} formatter={(v: number, _n: string, p: { payload?: { name?: string } }) => [fmtNumber(v), p.payload?.name ?? ""]} />
-        <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} iconType="circle" formatter={(v: string) => (v.length > 22 ? `${v.slice(0, 22)}…` : v)} />
+        <Tooltip content={<CampaignTooltip />} />
+        <Legend wrapperStyle={{ fontSize: 10, color: AXIS }} iconType="circle" formatter={(v: string) => (v.length > 22 ? `${v.slice(0, 22)}…` : v)} />
       </PieChart>
     </ResponsiveContainer>
   );
 }
 
-function CampaignBars({ campaigns, isProfileMode }: { campaigns: CampaignLike[]; isProfileMode: boolean }) {
-  const totalProfile = campaigns.reduce((s, c) => s + c.profile_visits, 0);
-  const totalConv = campaigns.reduce((s, c) => s + c.conversions, 0);
-  const useProfile = isProfileMode && totalProfile > 0;
-  const useConv = !useProfile && totalConv > 0;
-  const rows = campaigns
-    .map((c) => ({
-      name: c.campaign_name.length > 22 ? `${c.campaign_name.slice(0, 22)}…` : c.campaign_name,
-      value: useProfile ? c.profile_visits : useConv ? c.conversions : c.spend,
-    }))
-    .filter((r) => r.value > 0)
-    .sort((a, b) => b.value - a.value)
+function GroupBars({ campaigns, spec, currency }: { campaigns: CampaignLike[]; spec: GroupSpec; currency: string | null }) {
+  const rows = buildChartData(campaigns, spec, "result", currency)
+    .map((d) => ({ ...d, name: d.name.length > 22 ? `${d.name.slice(0, 22)}…` : d.name }))
     .slice(0, 10);
   if (rows.length === 0) return <EmptyChart />;
-  const label = useProfile ? "Visitas" : useConv ? "Resultados" : "Investimento";
   return (
     <ResponsiveContainer>
       <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
         <CartesianGrid stroke={GRID} strokeDasharray="3 3" horizontal={false} />
-        <XAxis type="number" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} />
-        <YAxis type="category" dataKey="name" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} width={140} />
-        <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [fmtNumber(v), label]} />
+        <XAxis type="number" stroke={AXIS} fontSize={10} tickLine={false} axisLine={false} />
+        <YAxis type="category" dataKey="name" stroke={AXIS} fontSize={10} tickLine={false} axisLine={false} width={130} />
+        <Tooltip content={<CampaignTooltip />} cursor={{ fill: "oklch(0.28 0.03 250 / 0.4)" }} />
         <Bar dataKey="value" radius={[0, 6, 6, 0]}>
           {rows.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
         </Bar>
@@ -540,144 +758,111 @@ function CampaignBars({ campaigns, isProfileMode }: { campaigns: CampaignLike[];
   );
 }
 
-function CampaignRanking({ campaigns, currency }: { campaigns: CampaignLike[]; currency: string | null }) {
-  const rows = campaigns.slice(0, 10).map((c) => {
-    const isProfile = c.profile_visits > c.conversions;
-    return {
-      ...c,
-      result: isProfile ? c.profile_visits : c.conversions,
-      cost: isProfile ? c.cost_per_profile_visit : c.cost_per_conversion,
-      isProfile,
-    };
-  });
-  const max = Math.max(1, ...rows.map((r) => r.result));
+function ChartHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="mb-2 flex items-baseline justify-between gap-2">
+      <p className="truncate text-sm font-semibold">{title}</p>
+      {subtitle ? <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{subtitle}</p> : null}
+    </div>
+  );
+}
+
+// ---------------- Rankings ----------------
+
+function CampaignRanking({ campaigns, spec, currency }: { campaigns: CampaignLike[]; spec: GroupSpec; currency: string | null }) {
+  const rows = campaigns.slice(0, 10);
+  const max = Math.max(1, ...rows.map((r) => spec.pickResult(r)));
   return (
     <Panel>
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Trophy className="h-4 w-4 text-warning" />
-          <p className="text-sm font-semibold">Melhores Campanhas</p>
+          <p className="text-sm font-semibold">Melhores Campanhas · {spec.label}</p>
         </div>
         <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Top 10</span>
       </div>
-      {rows.length === 0 ? (
-        <EmptyChart />
-      ) : (
+      {rows.length === 0 ? <EmptyChart /> : (
         <ul className="divide-y divide-border">
-          {rows.map((r, i) => (
-            <li key={r.campaign_id} className="grid grid-cols-[24px_1fr_auto] items-center gap-3 py-2.5">
-              <span className="grid h-6 w-6 place-items-center rounded-md bg-primary/10 text-[11px] font-bold text-primary">{i + 1}</span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium" title={r.campaign_name}>{r.campaign_name}</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${(r.result / max) * 100}%`, background: PALETTE[i % PALETTE.length] }} />
+          {rows.map((r, i) => {
+            const result = spec.pickResult(r);
+            const cost = spec.pickCost(r);
+            return (
+              <li key={r.campaign_id} className="grid grid-cols-[24px_1fr_auto] items-center gap-3 py-2.5">
+                <span className="grid h-6 w-6 place-items-center rounded-md bg-primary/10 text-[11px] font-bold text-primary">{i + 1}</span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium" title={r.campaign_name}>{r.campaign_name}</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${(result / max) * 100}%`, background: PALETTE[i % PALETTE.length] }} />
+                    </div>
+                    <span className="whitespace-nowrap text-[10px] text-muted-foreground">
+                      CTR {fmtPercent(r.ctr)} · {fmtCurrency(r.spend, currency)}
+                    </span>
                   </div>
-                  <span className="whitespace-nowrap text-[10px] text-muted-foreground">
-                    CTR {fmtPercent(r.ctr)} · {fmtCurrency(r.spend, currency)}
-                  </span>
                 </div>
-              </div>
-              <div className="text-right">
-                <p className="tabular-nums text-sm font-bold">{fmtNumber(r.result)}</p>
-                <p className="text-[10px] text-muted-foreground">{fmtCurrency(r.cost, currency)}</p>
-              </div>
-            </li>
-          ))}
+                <div className="text-right">
+                  <p className="tabular-nums text-sm font-bold">{fmtNumber(result)}</p>
+                  <p className="text-[10px] text-muted-foreground">{fmtCurrency(cost, currency)}</p>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </Panel>
   );
 }
 
-function AdRanking({ ads, currency }: { ads: AdLike[]; currency: string | null }) {
-  const rows = ads.slice(0, 10).map((a) => {
-    const isProfile = a.profile_visits > a.conversions;
-    return {
-      ...a,
-      result: isProfile ? a.profile_visits : a.conversions,
-      cost: isProfile ? a.cost_per_profile_visit : a.cost_per_conversion,
-    };
-  });
-  const max = Math.max(1, ...rows.map((r) => r.result));
+function AdRanking({ ads, spec, currency }: { ads: AdLike[]; spec: GroupSpec; currency: string | null }) {
+  const rows = ads.slice(0, 10);
+  const max = Math.max(1, ...rows.map((r) => spec.pickResultAd(r)));
   return (
     <Panel>
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Award className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold">Melhores Criativos</p>
+          <p className="text-sm font-semibold">Melhores Criativos · {spec.label}</p>
         </div>
         <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Top 10</span>
       </div>
-      {rows.length === 0 ? (
-        <EmptyChart />
-      ) : (
+      {rows.length === 0 ? <EmptyChart /> : (
         <ul className="divide-y divide-border">
-          {rows.map((r, i) => (
-            <li key={r.ad_id} className="grid grid-cols-[24px_44px_1fr_auto] items-center gap-3 py-2.5">
-              <span className="grid h-6 w-6 place-items-center rounded-md bg-primary/10 text-[11px] font-bold text-primary">{i + 1}</span>
-              {r.thumbnail_url ? (
-                <img src={r.thumbnail_url} alt="" className="h-11 w-11 rounded-md object-cover" />
-              ) : (
-                <div className="h-11 w-11 rounded-md bg-muted" />
-              )}
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium" title={r.ad_name}>{r.ad_name}</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${(r.result / max) * 100}%`, background: PALETTE[i % PALETTE.length] }} />
+          {rows.map((r, i) => {
+            const result = spec.pickResultAd(r);
+            const cost = spec.pickCostAd(r);
+            return (
+              <li key={r.ad_id} className="grid grid-cols-[24px_44px_1fr_auto] items-center gap-3 py-2.5">
+                <span className="grid h-6 w-6 place-items-center rounded-md bg-primary/10 text-[11px] font-bold text-primary">{i + 1}</span>
+                {r.thumbnail_url ? (
+                  <img src={r.thumbnail_url} alt="" className="h-11 w-11 rounded-md object-cover" />
+                ) : (
+                  <div className="h-11 w-11 rounded-md bg-muted" />
+                )}
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium" title={r.ad_name}>{r.ad_name}</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${(result / max) * 100}%`, background: PALETTE[i % PALETTE.length] }} />
+                    </div>
+                    <span className="whitespace-nowrap text-[10px] text-muted-foreground">
+                      CTR {fmtPercent(r.ctr)} · {fmtCurrency(r.spend, currency)}
+                    </span>
                   </div>
-                  <span className="whitespace-nowrap text-[10px] text-muted-foreground">
-                    CTR {fmtPercent(r.ctr)} · {fmtCurrency(r.spend, currency)}
-                  </span>
                 </div>
-              </div>
-              <div className="text-right">
-                <p className="tabular-nums text-sm font-bold">{fmtNumber(r.result)}</p>
-                <p className="text-[10px] text-muted-foreground">{fmtCurrency(r.cost, currency)}</p>
-              </div>
-            </li>
-          ))}
+                <div className="text-right">
+                  <p className="tabular-nums text-sm font-bold">{fmtNumber(result)}</p>
+                  <p className="text-[10px] text-muted-foreground">{fmtCurrency(cost, currency)}</p>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </Panel>
   );
 }
 
-function ComparisonBars({
-  title, campaigns, pick, format, color, lowerBetter,
-}: {
-  title: string;
-  campaigns: CampaignLike[];
-  pick: (c: CampaignLike) => number;
-  format: (v: number) => string;
-  color: string;
-  lowerBetter?: boolean;
-}) {
-  const rows = campaigns
-    .map((c) => ({ name: c.campaign_name.length > 22 ? `${c.campaign_name.slice(0, 22)}…` : c.campaign_name, value: pick(c) }))
-    .filter((r) => Number.isFinite(r.value) && r.value > 0)
-    .sort((a, b) => lowerBetter ? a.value - b.value : b.value - a.value)
-    .slice(0, 8);
-  return (
-    <Panel>
-      <ChartHeader title={title} subtitle={lowerBetter ? "Menor é melhor" : "Maior é melhor"} />
-      <div className="h-64">
-        {rows.length === 0 ? <EmptyChart /> : (
-          <ResponsiveContainer>
-            <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-              <CartesianGrid stroke={GRID} strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v: number) => format(v)} />
-              <YAxis type="category" dataKey="name" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} width={130} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [format(v), title]} />
-              <Bar dataKey="value" radius={[0, 6, 6, 0]} fill={color} />
-            </BarChart>
-          </ResponsiveContainer>
-        )}
-      </div>
-    </Panel>
-  );
-}
+// ---------------- Account-level pieces (unchanged) ----------------
 
 function Funnel({
   totals, isProfileMode, currency,
@@ -748,11 +933,7 @@ function WeekdayHeatmap({ series }: { series: { date: string; conversions: numbe
           const val = b.result || b.clicks;
           const intensity = val / max;
           return (
-            <div
-              key={i}
-              className="rounded-xl border border-border p-3 text-center transition-all hover:-translate-y-0.5"
-              style={{ background: `color-mix(in oklab, ${PALETTE[1]} ${Math.round(intensity * 60)}%, transparent)` }}
-            >
+            <div key={i} className="rounded-xl border border-border p-3 text-center transition-all hover:-translate-y-0.5" style={{ background: `color-mix(in oklab, ${PALETTE[1]} ${Math.round(intensity * 60)}%, transparent)` }}>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{days[i]}</p>
               <p className="mt-1 font-display text-lg font-bold tabular-nums">{fmtNumber(b.result)}</p>
               <p className="text-[10px] text-muted-foreground">{fmtNumber(b.clicks)} cliques</p>
@@ -762,76 +943,6 @@ function WeekdayHeatmap({ series }: { series: { date: string; conversions: numbe
       </div>
       <p className="mt-3 text-[11px] text-muted-foreground">Total de resultados por dia da semana no período.</p>
     </Panel>
-  );
-}
-
-function Highlights({
-  campaigns, ads, currency, isProfileMode,
-}: {
-  campaigns: CampaignLike[];
-  ads: AdLike[];
-  currency: string | null;
-  isProfileMode: boolean;
-}) {
-  const withClicks = campaigns.filter((c) => c.clicks > 0);
-  const bestCtr = [...withClicks].sort((a, b) => b.ctr - a.ctr)[0];
-  const minCpc = [...withClicks].filter((c) => c.cpc > 0).sort((a, b) => a.cpc - b.cpc)[0];
-  const maxSpend = [...campaigns].sort((a, b) => b.spend - a.spend)[0];
-  const maxResult = [...campaigns].sort((a, b) => (isProfileMode ? b.profile_visits - a.profile_visits : b.conversions - a.conversions))[0];
-  const withResults = campaigns.filter((c) => (isProfileMode ? c.profile_visits : c.conversions) > 0);
-  const minCost = [...withResults].sort((a, b) => (isProfileMode ? a.cost_per_profile_visit - b.cost_per_profile_visit : a.cost_per_conversion - b.cost_per_conversion))[0];
-  const adsWithResults = ads.filter((a) => (isProfileMode ? a.profile_visits : a.conversions) > 0);
-  const bestAd = adsWithResults[0];
-  const worstAd = [...adsWithResults].sort((a, b) => (isProfileMode ? b.cost_per_profile_visit - a.cost_per_profile_visit : b.cost_per_conversion - a.cost_per_conversion))[0];
-
-  const items: { icon: LucideIcon; tone: string; label: string; name: string; value: string }[] = [];
-  if (bestCtr) items.push({ icon: TrendingUp, tone: PALETTE[6], label: "Maior CTR", name: bestCtr.campaign_name, value: fmtPercent(bestCtr.ctr) });
-  if (minCpc) items.push({ icon: TrendingDown, tone: PALETTE[8], label: "Menor CPC", name: minCpc.campaign_name, value: fmtCurrency(minCpc.cpc, currency) });
-  if (maxSpend) items.push({ icon: DollarSign, tone: PALETTE[0], label: "Maior investimento", name: maxSpend.campaign_name, value: fmtCurrency(maxSpend.spend, currency) });
-  if (maxResult) items.push({ icon: Trophy, tone: PALETTE[1], label: "Mais resultados", name: maxResult.campaign_name, value: fmtNumber(isProfileMode ? maxResult.profile_visits : maxResult.conversions) });
-  if (minCost) items.push({ icon: Target, tone: PALETTE[3], label: "Menor custo/resultado", name: minCost.campaign_name, value: fmtCurrency(isProfileMode ? minCost.cost_per_profile_visit : minCost.cost_per_conversion, currency) });
-  if (bestAd) items.push({ icon: Award, tone: PALETTE[4], label: "Melhor anúncio", name: bestAd.ad_name, value: fmtNumber(isProfileMode ? bestAd.profile_visits : bestAd.conversions) });
-  if (worstAd && worstAd !== bestAd) items.push({ icon: TrendingDown, tone: PALETTE[3], label: "Anúncio a revisar", name: worstAd.ad_name, value: fmtCurrency(isProfileMode ? worstAd.cost_per_profile_visit : worstAd.cost_per_conversion, currency) });
-
-  return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-      {items.map((it, i) => (
-        <div key={i} className="rounded-2xl border border-border bg-card p-4 shadow-card">
-          <div className="flex items-center gap-2">
-            <div className="grid h-8 w-8 place-items-center rounded-lg text-background" style={{ backgroundColor: it.tone }}>
-              <it.icon className="h-4 w-4" />
-            </div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{it.label}</p>
-          </div>
-          <p className="mt-3 truncate text-sm font-semibold" title={it.name}>{it.name}</p>
-          <p className="mt-1 font-display text-xl font-bold tabular-nums">{it.value}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function StackedCompare({ campaigns, isProfileMode }: { campaigns: CampaignLike[]; isProfileMode: boolean }) {
-  const rows = campaigns.slice(0, 8).map((c) => ({
-    name: c.campaign_name.length > 18 ? `${c.campaign_name.slice(0, 18)}…` : c.campaign_name,
-    Investimento: c.spend,
-    Resultados: isProfileMode ? c.profile_visits : c.conversions,
-    Cliques: c.clicks,
-  }));
-  if (rows.length === 0) return <EmptyChart />;
-  return (
-    <ResponsiveContainer>
-      <BarChart data={rows} margin={{ top: 8, right: 12, left: 0, bottom: 40 }}>
-        <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="name" stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} interval={0} angle={-20} textAnchor="end" />
-        <YAxis stroke={AXIS} fontSize={11} tickLine={false} axisLine={false} />
-        <Tooltip contentStyle={tooltipStyle} />
-        <Legend wrapperStyle={{ fontSize: 12, color: AXIS }} />
-        <Bar dataKey="Investimento" stackId="a" fill={PALETTE[0]} radius={[0, 0, 0, 0]} />
-        <Bar dataKey="Cliques" stackId="a" fill={PALETTE[5]} />
-        <Bar dataKey="Resultados" stackId="a" fill={PALETTE[1]} radius={[6, 6, 0, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
   );
 }
 
@@ -928,12 +1039,10 @@ function buildAutoInsights({
     const prevCtr = prev.ctr_link || prev.ctr;
     const d = computeDelta(ctr, prevCtr, true);
     if (d && Math.abs(d.value) >= 5) out.push({ icon: d.value >= 0 ? TrendingUp : TrendingDown, tone: d.better ? PALETTE[1] : PALETTE[3], text: `O CTR ${d.value >= 0 ? "aumentou" : "reduziu"} ${Math.abs(d.value).toFixed(0)}% vs. o período anterior.` });
-
     const cpc = totals.cpc_link || totals.cpc;
     const prevCpc = prev.cpc_link || prev.cpc;
     const d2 = computeDelta(cpc, prevCpc, false);
     if (d2 && Math.abs(d2.value) >= 5) out.push({ icon: d2.value >= 0 ? TrendingUp : TrendingDown, tone: d2.better ? PALETTE[1] : PALETTE[3], text: `O CPC ${d2.value >= 0 ? "aumentou" : "reduziu"} ${Math.abs(d2.value).toFixed(0)}% vs. o período anterior.` });
-
     const d3 = computeDelta(totals.spend, prev.spend, true);
     if (d3 && Math.abs(d3.value) >= 10) out.push({ icon: DollarSign, tone: PALETTE[0], text: `O investimento ${d3.value >= 0 ? "aumentou" : "reduziu"} ${Math.abs(d3.value).toFixed(0)}% vs. o período anterior.` });
   }
