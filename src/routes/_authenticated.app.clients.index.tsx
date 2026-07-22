@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, ChevronRight, X, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { PlatformBadge } from "@/components/platform-badge";
+import { PlatformChip, type PlatformKey } from "@/components/platform-chip";
 import { supabase } from "@/integrations/supabase/client";
 import { CLIENT_COLORS, initialsFromName } from "@/lib/mock-data";
 
@@ -23,6 +23,19 @@ export const Route = createFileRoute("/_authenticated/app/clients/")({
   component: ClientsList,
 });
 
+function platformsForClient(accts: { platform: string }[] | null): PlatformKey[] {
+  const set = new Set<PlatformKey>();
+  for (const a of accts ?? []) {
+    if (a.platform === "meta") {
+      set.add("meta");
+      set.add("instagram");
+      set.add("facebook");
+    }
+    if (a.platform === "google") set.add("google");
+  }
+  return Array.from(set);
+}
+
 function ClientsList() {
   const { data: clients } = useSuspenseQuery(clientsQuery);
   const [open, setOpen] = useState(false);
@@ -33,20 +46,20 @@ function ClientsList() {
   );
 
   return (
-    <div className="p-6 md:p-10">
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+    <div className="mx-auto max-w-[1400px] px-6 py-12 md:px-10">
+      <header className="mb-10 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
             Clientes
           </p>
-          <h1 className="mt-1 font-display text-3xl font-semibold">Sua carteira</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Sua carteira</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
             {clients.length} cliente{clients.length === 1 ? "" : "s"} • {totalAccounts} conta{totalAccounts === 1 ? "" : "s"} vinculada{totalAccounts === 1 ? "" : "s"}
           </p>
         </div>
         <button
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-2 rounded-lg gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow"
+          className="inline-flex items-center gap-2 rounded-xl gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow"
         >
           <Plus className="h-4 w-4" />
           Novo cliente
@@ -54,43 +67,44 @@ function ClientsList() {
       </header>
 
       {clients.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-card/40 p-12 text-center">
-          <p className="font-display text-lg font-semibold">
+        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-16 text-center">
+          <p className="text-lg font-semibold tracking-tight">
             Você ainda não tem clientes
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Crie seu primeiro cliente e vincule uma conta de anúncio importada.
+          <p className="mt-2 text-sm text-muted-foreground">
+            Crie seu primeiro cliente e vincule uma conta de anúncio nas Integrações.
           </p>
           <button
             onClick={() => setOpen(true)}
-            className="mt-6 inline-flex items-center gap-2 rounded-lg gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow"
+            className="mt-8 inline-flex items-center gap-2 rounded-xl gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow"
           >
             <Plus className="h-4 w-4" />
             Criar cliente
           </button>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {clients.map((c) => {
             const accounts = c.ad_accounts ?? [];
+            const platforms = platformsForClient(accounts);
             return (
               <Link
                 key={c.id}
                 to="/app/clients/$clientId"
                 params={{ clientId: c.id }}
-                className="group flex flex-col rounded-xl border border-border bg-card p-6 shadow-card transition-colors hover:border-primary/40"
+                className="group relative flex flex-col rounded-2xl border border-border bg-card p-7 shadow-card transition-shadow hover:shadow-elevated"
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3.5">
                     <span
-                      className="grid h-11 w-11 place-items-center rounded-lg text-sm font-semibold text-background"
+                      className="grid h-12 w-12 place-items-center rounded-2xl text-sm font-semibold text-background"
                       style={{ backgroundColor: c.brand_color }}
                     >
                       {c.logo ?? initialsFromName(c.name)}
                     </span>
                     <div>
-                      <p className="font-display text-lg font-semibold">{c.name}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-lg font-semibold tracking-tight">{c.name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
                         {accounts.length} conta{accounts.length === 1 ? "" : "s"}
                       </p>
                     </div>
@@ -98,17 +112,14 @@ function ClientsList() {
                   <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-1.5">
-                  {accounts.length === 0 ? (
+                <div className="mt-6 flex flex-wrap gap-1.5">
+                  {platforms.length === 0 ? (
                     <span className="text-xs text-muted-foreground">
-                      Nenhuma conta vinculada
+                      Nenhuma integração
                     </span>
                   ) : (
-                    accounts.map((a) => (
-                      <PlatformBadge
-                        key={a.id}
-                        platform={a.platform as "meta" | "google"}
-                      />
+                    platforms.map((p) => (
+                      <PlatformChip key={p} platform={p} connected />
                     ))
                   )}
                 </div>
@@ -118,7 +129,7 @@ function ClientsList() {
 
           <button
             onClick={() => setOpen(true)}
-            className="grid place-items-center rounded-xl border border-dashed border-border bg-card/40 p-6 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+            className="grid place-items-center rounded-2xl border border-dashed border-border bg-card/40 p-7 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
           >
             <div>
               <Plus className="mx-auto h-6 w-6" />

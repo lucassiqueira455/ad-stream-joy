@@ -24,6 +24,12 @@ import { Route as AuthenticatedAppReportsRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAppClientsIndexRouteImport } from './routes/_authenticated.app.clients.index'
 import { Route as ApiAuthMetaCallbackRouteImport } from './routes/api/auth/meta.callback'
 import { Route as AuthenticatedAppClientsClientIdRouteImport } from './routes/_authenticated.app.clients.$clientId'
+import { Route as AuthenticatedAppClientsClientIdIndexRouteImport } from './routes/_authenticated.app.clients.$clientId.index'
+import { Route as AuthenticatedAppClientsClientIdSettingsRouteImport } from './routes/_authenticated.app.clients.$clientId.settings'
+import { Route as AuthenticatedAppClientsClientIdReportsRouteImport } from './routes/_authenticated.app.clients.$clientId.reports'
+import { Route as AuthenticatedAppClientsClientIdIntegrationsRouteImport } from './routes/_authenticated.app.clients.$clientId.integrations'
+import { Route as AuthenticatedAppClientsClientIdCreativesRouteImport } from './routes/_authenticated.app.clients.$clientId.creatives'
+import { Route as AuthenticatedAppClientsClientIdCampaignsRouteImport } from './routes/_authenticated.app.clients.$clientId.campaigns'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -102,6 +108,42 @@ const AuthenticatedAppClientsClientIdRoute =
     path: '/clients/$clientId',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
+const AuthenticatedAppClientsClientIdIndexRoute =
+  AuthenticatedAppClientsClientIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAppClientsClientIdRoute,
+  } as any)
+const AuthenticatedAppClientsClientIdSettingsRoute =
+  AuthenticatedAppClientsClientIdSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedAppClientsClientIdRoute,
+  } as any)
+const AuthenticatedAppClientsClientIdReportsRoute =
+  AuthenticatedAppClientsClientIdReportsRouteImport.update({
+    id: '/reports',
+    path: '/reports',
+    getParentRoute: () => AuthenticatedAppClientsClientIdRoute,
+  } as any)
+const AuthenticatedAppClientsClientIdIntegrationsRoute =
+  AuthenticatedAppClientsClientIdIntegrationsRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
+    getParentRoute: () => AuthenticatedAppClientsClientIdRoute,
+  } as any)
+const AuthenticatedAppClientsClientIdCreativesRoute =
+  AuthenticatedAppClientsClientIdCreativesRouteImport.update({
+    id: '/creatives',
+    path: '/creatives',
+    getParentRoute: () => AuthenticatedAppClientsClientIdRoute,
+  } as any)
+const AuthenticatedAppClientsClientIdCampaignsRoute =
+  AuthenticatedAppClientsClientIdCampaignsRouteImport.update({
+    id: '/campaigns',
+    path: '/campaigns',
+    getParentRoute: () => AuthenticatedAppClientsClientIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -115,9 +157,15 @@ export interface FileRoutesByFullPath {
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app/': typeof AuthenticatedAppIndexRoute
-  '/app/clients/$clientId': typeof AuthenticatedAppClientsClientIdRoute
+  '/app/clients/$clientId': typeof AuthenticatedAppClientsClientIdRouteWithChildren
   '/api/auth/meta/callback': typeof ApiAuthMetaCallbackRoute
   '/app/clients/': typeof AuthenticatedAppClientsIndexRoute
+  '/app/clients/$clientId/campaigns': typeof AuthenticatedAppClientsClientIdCampaignsRoute
+  '/app/clients/$clientId/creatives': typeof AuthenticatedAppClientsClientIdCreativesRoute
+  '/app/clients/$clientId/integrations': typeof AuthenticatedAppClientsClientIdIntegrationsRoute
+  '/app/clients/$clientId/reports': typeof AuthenticatedAppClientsClientIdReportsRoute
+  '/app/clients/$clientId/settings': typeof AuthenticatedAppClientsClientIdSettingsRoute
+  '/app/clients/$clientId/': typeof AuthenticatedAppClientsClientIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -129,9 +177,14 @@ export interface FileRoutesByTo {
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app': typeof AuthenticatedAppIndexRoute
-  '/app/clients/$clientId': typeof AuthenticatedAppClientsClientIdRoute
   '/api/auth/meta/callback': typeof ApiAuthMetaCallbackRoute
   '/app/clients': typeof AuthenticatedAppClientsIndexRoute
+  '/app/clients/$clientId/campaigns': typeof AuthenticatedAppClientsClientIdCampaignsRoute
+  '/app/clients/$clientId/creatives': typeof AuthenticatedAppClientsClientIdCreativesRoute
+  '/app/clients/$clientId/integrations': typeof AuthenticatedAppClientsClientIdIntegrationsRoute
+  '/app/clients/$clientId/reports': typeof AuthenticatedAppClientsClientIdReportsRoute
+  '/app/clients/$clientId/settings': typeof AuthenticatedAppClientsClientIdSettingsRoute
+  '/app/clients/$clientId': typeof AuthenticatedAppClientsClientIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -147,9 +200,15 @@ export interface FileRoutesById {
   '/_authenticated/app/reports': typeof AuthenticatedAppReportsRoute
   '/_authenticated/app/settings': typeof AuthenticatedAppSettingsRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
-  '/_authenticated/app/clients/$clientId': typeof AuthenticatedAppClientsClientIdRoute
+  '/_authenticated/app/clients/$clientId': typeof AuthenticatedAppClientsClientIdRouteWithChildren
   '/api/auth/meta/callback': typeof ApiAuthMetaCallbackRoute
   '/_authenticated/app/clients/': typeof AuthenticatedAppClientsIndexRoute
+  '/_authenticated/app/clients/$clientId/campaigns': typeof AuthenticatedAppClientsClientIdCampaignsRoute
+  '/_authenticated/app/clients/$clientId/creatives': typeof AuthenticatedAppClientsClientIdCreativesRoute
+  '/_authenticated/app/clients/$clientId/integrations': typeof AuthenticatedAppClientsClientIdIntegrationsRoute
+  '/_authenticated/app/clients/$clientId/reports': typeof AuthenticatedAppClientsClientIdReportsRoute
+  '/_authenticated/app/clients/$clientId/settings': typeof AuthenticatedAppClientsClientIdSettingsRoute
+  '/_authenticated/app/clients/$clientId/': typeof AuthenticatedAppClientsClientIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -168,6 +227,12 @@ export interface FileRouteTypes {
     | '/app/clients/$clientId'
     | '/api/auth/meta/callback'
     | '/app/clients/'
+    | '/app/clients/$clientId/campaigns'
+    | '/app/clients/$clientId/creatives'
+    | '/app/clients/$clientId/integrations'
+    | '/app/clients/$clientId/reports'
+    | '/app/clients/$clientId/settings'
+    | '/app/clients/$clientId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -179,9 +244,14 @@ export interface FileRouteTypes {
     | '/app/reports'
     | '/app/settings'
     | '/app'
-    | '/app/clients/$clientId'
     | '/api/auth/meta/callback'
     | '/app/clients'
+    | '/app/clients/$clientId/campaigns'
+    | '/app/clients/$clientId/creatives'
+    | '/app/clients/$clientId/integrations'
+    | '/app/clients/$clientId/reports'
+    | '/app/clients/$clientId/settings'
+    | '/app/clients/$clientId'
   id:
     | '__root__'
     | '/'
@@ -199,6 +269,12 @@ export interface FileRouteTypes {
     | '/_authenticated/app/clients/$clientId'
     | '/api/auth/meta/callback'
     | '/_authenticated/app/clients/'
+    | '/_authenticated/app/clients/$clientId/campaigns'
+    | '/_authenticated/app/clients/$clientId/creatives'
+    | '/_authenticated/app/clients/$clientId/integrations'
+    | '/_authenticated/app/clients/$clientId/reports'
+    | '/_authenticated/app/clients/$clientId/settings'
+    | '/_authenticated/app/clients/$clientId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -317,14 +393,86 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppClientsClientIdRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/clients/$clientId/': {
+      id: '/_authenticated/app/clients/$clientId/'
+      path: '/'
+      fullPath: '/app/clients/$clientId/'
+      preLoaderRoute: typeof AuthenticatedAppClientsClientIdIndexRouteImport
+      parentRoute: typeof AuthenticatedAppClientsClientIdRoute
+    }
+    '/_authenticated/app/clients/$clientId/settings': {
+      id: '/_authenticated/app/clients/$clientId/settings'
+      path: '/settings'
+      fullPath: '/app/clients/$clientId/settings'
+      preLoaderRoute: typeof AuthenticatedAppClientsClientIdSettingsRouteImport
+      parentRoute: typeof AuthenticatedAppClientsClientIdRoute
+    }
+    '/_authenticated/app/clients/$clientId/reports': {
+      id: '/_authenticated/app/clients/$clientId/reports'
+      path: '/reports'
+      fullPath: '/app/clients/$clientId/reports'
+      preLoaderRoute: typeof AuthenticatedAppClientsClientIdReportsRouteImport
+      parentRoute: typeof AuthenticatedAppClientsClientIdRoute
+    }
+    '/_authenticated/app/clients/$clientId/integrations': {
+      id: '/_authenticated/app/clients/$clientId/integrations'
+      path: '/integrations'
+      fullPath: '/app/clients/$clientId/integrations'
+      preLoaderRoute: typeof AuthenticatedAppClientsClientIdIntegrationsRouteImport
+      parentRoute: typeof AuthenticatedAppClientsClientIdRoute
+    }
+    '/_authenticated/app/clients/$clientId/creatives': {
+      id: '/_authenticated/app/clients/$clientId/creatives'
+      path: '/creatives'
+      fullPath: '/app/clients/$clientId/creatives'
+      preLoaderRoute: typeof AuthenticatedAppClientsClientIdCreativesRouteImport
+      parentRoute: typeof AuthenticatedAppClientsClientIdRoute
+    }
+    '/_authenticated/app/clients/$clientId/campaigns': {
+      id: '/_authenticated/app/clients/$clientId/campaigns'
+      path: '/campaigns'
+      fullPath: '/app/clients/$clientId/campaigns'
+      preLoaderRoute: typeof AuthenticatedAppClientsClientIdCampaignsRouteImport
+      parentRoute: typeof AuthenticatedAppClientsClientIdRoute
+    }
   }
 }
+
+interface AuthenticatedAppClientsClientIdRouteChildren {
+  AuthenticatedAppClientsClientIdCampaignsRoute: typeof AuthenticatedAppClientsClientIdCampaignsRoute
+  AuthenticatedAppClientsClientIdCreativesRoute: typeof AuthenticatedAppClientsClientIdCreativesRoute
+  AuthenticatedAppClientsClientIdIntegrationsRoute: typeof AuthenticatedAppClientsClientIdIntegrationsRoute
+  AuthenticatedAppClientsClientIdReportsRoute: typeof AuthenticatedAppClientsClientIdReportsRoute
+  AuthenticatedAppClientsClientIdSettingsRoute: typeof AuthenticatedAppClientsClientIdSettingsRoute
+  AuthenticatedAppClientsClientIdIndexRoute: typeof AuthenticatedAppClientsClientIdIndexRoute
+}
+
+const AuthenticatedAppClientsClientIdRouteChildren: AuthenticatedAppClientsClientIdRouteChildren =
+  {
+    AuthenticatedAppClientsClientIdCampaignsRoute:
+      AuthenticatedAppClientsClientIdCampaignsRoute,
+    AuthenticatedAppClientsClientIdCreativesRoute:
+      AuthenticatedAppClientsClientIdCreativesRoute,
+    AuthenticatedAppClientsClientIdIntegrationsRoute:
+      AuthenticatedAppClientsClientIdIntegrationsRoute,
+    AuthenticatedAppClientsClientIdReportsRoute:
+      AuthenticatedAppClientsClientIdReportsRoute,
+    AuthenticatedAppClientsClientIdSettingsRoute:
+      AuthenticatedAppClientsClientIdSettingsRoute,
+    AuthenticatedAppClientsClientIdIndexRoute:
+      AuthenticatedAppClientsClientIdIndexRoute,
+  }
+
+const AuthenticatedAppClientsClientIdRouteWithChildren =
+  AuthenticatedAppClientsClientIdRoute._addFileChildren(
+    AuthenticatedAppClientsClientIdRouteChildren,
+  )
 
 interface AuthenticatedAppRouteChildren {
   AuthenticatedAppReportsRoute: typeof AuthenticatedAppReportsRoute
   AuthenticatedAppSettingsRoute: typeof AuthenticatedAppSettingsRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
-  AuthenticatedAppClientsClientIdRoute: typeof AuthenticatedAppClientsClientIdRoute
+  AuthenticatedAppClientsClientIdRoute: typeof AuthenticatedAppClientsClientIdRouteWithChildren
   AuthenticatedAppClientsIndexRoute: typeof AuthenticatedAppClientsIndexRoute
 }
 
@@ -332,7 +480,8 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppReportsRoute: AuthenticatedAppReportsRoute,
   AuthenticatedAppSettingsRoute: AuthenticatedAppSettingsRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
-  AuthenticatedAppClientsClientIdRoute: AuthenticatedAppClientsClientIdRoute,
+  AuthenticatedAppClientsClientIdRoute:
+    AuthenticatedAppClientsClientIdRouteWithChildren,
   AuthenticatedAppClientsIndexRoute: AuthenticatedAppClientsIndexRoute,
 }
 
@@ -376,13 +525,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -13,12 +13,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { initialsFromName } from "@/lib/mock-data";
 import { useAuth } from "@/hooks/use-auth";
+import { PlatformDot, type PlatformKey } from "./platform-chip";
 
 const nav = [
-  { to: "/app", label: "Visão geral", icon: LayoutDashboard, exact: true },
+  { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/app/clients", label: "Clientes", icon: Users, exact: false },
   { to: "/app/reports", label: "Relatórios", icon: FileBarChart2, exact: false },
-  { to: "/app/settings", label: "Integrações", icon: Settings, exact: false },
+  { to: "/app/settings", label: "Configurações", icon: Settings, exact: false },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -30,7 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, name, brand_color, logo")
+        .select("id, name, brand_color, logo, ad_accounts(platform)")
         .order("name");
       if (error) throw error;
       return data ?? [];
@@ -44,81 +45,94 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isActive = (to: string, exact: boolean) =>
     exact ? location.pathname === to : location.pathname.startsWith(to);
 
+  const platformsFor = (accts: { platform: string }[] | null): PlatformKey[] => {
+    const set = new Set<PlatformKey>();
+    for (const a of accts ?? []) {
+      if (a.platform === "meta") set.add("meta");
+      if (a.platform === "google") set.add("google");
+    }
+    return Array.from(set);
+  };
+
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen w-full bg-background">
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
-        <div className="px-5 py-5">
+        <div className="px-6 py-6">
           <Link to="/app">
             <Logo />
           </Link>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3">
+        <nav className="flex-1 space-y-0.5 px-3">
           {nav.map((item) => {
             const active = isActive(item.to, item.exact);
             return (
               <Link
                 key={item.to}
                 to={item.to}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium ${
                   active
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/65 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
                 }`}
               >
-                <item.icon className="h-4 w-4" />
+                <item.icon className="h-4 w-4" strokeWidth={1.8} />
                 {item.label}
               </Link>
             );
           })}
 
-          <div className="mt-6 px-3 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/50">
-            Clientes
+          <div className="mt-8 flex items-center justify-between px-3 pb-2 pt-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/45">
+            <span>Clientes</span>
+            <Link to="/app/clients" className="hover:text-sidebar-foreground">
+              <Plus className="h-3 w-3" />
+            </Link>
           </div>
           <div className="space-y-0.5">
             {clients.map((c) => {
               const to = `/app/clients/${c.id}`;
-              const active = location.pathname === to;
+              const active = location.pathname.startsWith(to);
+              const platforms = platformsFor(c.ad_accounts);
               return (
                 <Link
                   key={c.id}
                   to={to}
-                  className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                  className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm ${
                     active
                       ? "bg-sidebar-accent text-sidebar-accent-foreground"
                       : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50"
                   }`}
                 >
                   <span
-                    className="grid h-6 w-6 place-items-center rounded-md text-[10px] font-semibold text-background"
+                    className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[10px] font-semibold text-background"
                     style={{ backgroundColor: c.brand_color }}
                   >
                     {c.logo ?? initialsFromName(c.name)}
                   </span>
-                  <span className="truncate">{c.name}</span>
+                  <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                  {platforms.length > 0 && (
+                    <span className="flex shrink-0 -space-x-1">
+                      {platforms.slice(0, 3).map((p) => (
+                        <PlatformDot key={p} platform={p} connected />
+                      ))}
+                    </span>
+                  )}
                 </Link>
               );
             })}
-            <Link
-              to="/app/clients"
-              className="mt-1 flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-accent-foreground"
-            >
-              <Plus className="h-3 w-3" />
-              Novo cliente
-            </Link>
           </div>
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
-          <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-            <div className="grid h-8 w-8 place-items-center rounded-full gradient-primary text-xs font-semibold text-primary-foreground">
+          <div className="flex items-center gap-3 rounded-xl px-2 py-2">
+            <div className="grid h-9 w-9 place-items-center rounded-full gradient-primary text-xs font-semibold text-primary-foreground">
               {displayName.slice(0, 1).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium capitalize">
                 {displayName}
               </p>
-              <p className="truncate text-xs text-sidebar-foreground/60">
+              <p className="truncate text-xs text-sidebar-foreground/55">
                 {displayEmail}
               </p>
             </div>
@@ -126,10 +140,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               type="button"
               onClick={() => signOut()}
               disabled={loading}
-              className="rounded-md p-1.5 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+              className="rounded-lg p-2 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               aria-label="Sair"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4" strokeWidth={1.8} />
             </button>
           </div>
         </div>
@@ -146,13 +160,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 key={item.to}
                 to={item.to}
                 aria-label={item.label}
-                className={`grid h-9 w-9 place-items-center rounded-md ${
+                className={`grid h-9 w-9 place-items-center rounded-lg ${
                   active
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50"
+                    : "text-sidebar-foreground/65 hover:bg-sidebar-accent/50"
                 }`}
               >
-                <item.icon className="h-4 w-4" />
+                <item.icon className="h-4 w-4" strokeWidth={1.8} />
               </Link>
             );
           })}
@@ -161,9 +175,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             onClick={() => signOut()}
             disabled={loading}
             aria-label="Sair"
-            className="grid h-9 w-9 place-items-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent/50 disabled:opacity-50"
+            className="grid h-9 w-9 place-items-center rounded-lg text-sidebar-foreground/65 hover:bg-sidebar-accent/50 disabled:opacity-50"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-4 w-4" strokeWidth={1.8} />
           </button>
         </nav>
       </header>

@@ -1,84 +1,146 @@
-## Objetivo
+# Redesign Premium — Página de Cliente
 
-Corrigir dados de "Visitas ao Perfil" e reestruturar o Dashboard para agrupar campanhas automaticamente por **objetivo**, com rankings, gráficos e tooltips independentes por grupo. Nada de comparação entre objetivos diferentes.
+Um redesign completo transformando a página de Cliente em uma experiência SaaS premium (Linear/Stripe/Vercel style), com integrações movidas para dentro de cada cliente e navegação interna dedicada.
 
 ---
 
-## 1. Dados: puxar corretamente Visitas ao Perfil da Meta
+## 1. Tipografia — Inter
 
-Hoje `fetchAdAccountCampaigns` só lê `actions`/`conversions` e infere Visitas ao Perfil via `maxActionValueWhere(isProfileVisitType)`. Isso diverge do Gerenciador de Anúncios quando a Meta reporta o resultado no campo `results` (com `indicator` = `profile_visit_view`) e o custo em `cost_per_result` — exatamente o número que aparece na coluna "Resultados" do Ads Manager.
+- Trocar Sora + Manrope por **Inter Variable** (headings e body) via `@fontsource-variable/inter`.
+- Manter `--font-display` e `--font-sans` apontando para Inter, com tracking mais apertado (`-0.02em` em headings, `-0.01em` em body) — estilo Apple/Stripe.
+- Remover `@fontsource-variable/sora` e `@fontsource-variable/manrope`.
 
-Ajustes em `src/lib/meta.server.ts`:
+## 2. Design tokens (src/styles.css)
 
-- Em `fetchAdAccountCampaigns`:
-  - Adicionar `results`, `cost_per_result` aos `fields` do insights por campanha.
-  - Adicionar `objective`, `optimization_goal`, `destination_type`, `effective_status` ao GET `/campaigns`.
-  - Prioridade para `profile_visits`:
-    1. `results` onde `indicator` corresponde a `profile_visit*` (usar `resultValue`).
-    2. `maxActionValueWhere(isProfileVisitType)` como fallback.
-  - Prioridade para `cost_per_profile_visit`:
-    1. `cost_per_result` no mesmo indicador (média ponderada por `profile_visits`).
-    2. `spend / profile_visits`.
-- `CampaignRow` ganha: `objective`, `optimization_goal`, `destination_type`.
-- Fazer o mesmo em `fetchAdAccountAds` (herdar `objective` da campanha via um `campaignMetaMap`).
+- Bordas mais suaves: radius base `16px` (14~18px conforme o componente).
+- Sombras suaves multi-camada (estilo Vercel/Linear): `--shadow-elevated`, `--shadow-hover`.
+- Reduzir intensidade de bordas (`--border` mais sutil, quase invisível).
+- Cores oficiais de plataforma como tokens:
+  - `--platform-meta` (azul Meta)
+  - `--platform-instagram` (gradiente roxo/rosa)
+  - `--platform-facebook` (azul FB)
+  - `--platform-google` (verde)
+  - `--platform-ga4` (laranja)
+  - `--platform-gtm` (azul escuro)
+  - `--platform-tiktok` (preto/cyan)
+  - `--platform-search-console` (verde escuro)
 
-## 2. Classificação automática por objetivo
+## 3. Sidebar principal — simplificar
 
-Novo helper `classifyCampaign(c: CampaignRow)` retornando uma `GroupKey`:
+`src/components/app-shell.tsx`:
+- Menu principal reduzido para: **Dashboard, Clientes, Relatórios, Configurações**.
+- Remover item "Integrações" do menu global.
+- Lista de clientes na sidebar: avatar colorido + nome + linha de bolinhas indicando plataformas conectadas (Meta/Google/GA4 etc.).
+- Mais respiro, tipografia Inter, hover elegante.
 
-- `profile_visits` — `destination_type` contém `INSTAGRAM_PROFILE`/`ON_PAGE` **ou** `optimization_goal` = `PROFILE_VISIT`/`VISIT_INSTAGRAM_PROFILE` **ou** `profile_visits > 0 && profile_visits >= conversions`.
-- `leads` — `objective` casa `LEAD|MESSAGE|CONVERSATION|CONVERSIONS`.
-- `sales` — `objective` casa `SALES|CATALOG|PURCHASE`.
-- `traffic` — `objective` casa `TRAFFIC|LINK_CLICKS`.
-- `video` — `objective` casa `VIDEO_VIEWS`.
-- `engagement` — `objective` casa `ENGAGEMENT|POST|PAGE_LIKES`.
-- `awareness` — `objective` casa `AWARENESS|REACH`.
-- fallback: infere pelos dados (`conversions>0`→leads, `clicks>0`→traffic, senão `other`).
+## 4. Página de Cliente — nova estrutura
 
-Cada grupo tem metadata (label, emoji, cor, métrica primária, métrica de custo, sort primário/secundário).
+Substituir a página monolítica `_authenticated.app.clients.$clientId.tsx` por um **layout com sub-rotas**:
 
-Ex.: `leads` → primário "Resultado" (conversions), custo "Custo por Resultado", ordenar por conversions desc, custo asc. `profile_visits` → primário "Visitas", custo "Custo por Visita". `sales` → "Compras", "ROAS", "CPA". `traffic` → "Cliques no link", "CPC". `engagement` → "Engajamentos", "Custo por Engajamento". `video` → "Visualizações", "Custo por View".
-
-## 3. Redesenho do `ClientDashboardView`
-
-Manter blocos globais (KPIs, insights, funil, heatmap, comparativo entre períodos) porque agregam a conta inteira. **Substituir** as seções de "Distribuição", "Rankings", "Comparativos entre campanhas", "Investimento vs Resultados" e "Destaques" por uma nova estrutura:
-
-```text
-┌─ [emoji] Nome do grupo · N campanhas · Objetivo Meta ─┐
-│  KPIs mínimos: Investimento, Resultado, Custo, CTR   │
-│  ┌──────────────┬──────────────┬─────────────┐       │
-│  │ Donut Invest │ Barras Result│ Pizza Result│       │
-│  └──────────────┴──────────────┴─────────────┘       │
-│  Ranking de campanhas (do grupo, top 10)             │
-│  Ranking de criativos (do grupo, top 10)             │
-└───────────────────────────────────────────────────────┘
+```
+src/routes/_authenticated.app.clients.$clientId.tsx          → layout (header + tabs + <Outlet/>)
+src/routes/_authenticated.app.clients.$clientId.index.tsx    → redireciona para /dashboard
+src/routes/_authenticated.app.clients.$clientId.dashboard.tsx
+src/routes/_authenticated.app.clients.$clientId.reports.tsx
+src/routes/_authenticated.app.clients.$clientId.campaigns.tsx
+src/routes/_authenticated.app.clients.$clientId.creatives.tsx
+src/routes/_authenticated.app.clients.$clientId.integrations.tsx
+src/routes/_authenticated.app.clients.$clientId.settings.tsx
 ```
 
-Renderizar uma seção dessas por grupo presente na conta. Ordem: leads → sales → profile_visits → traffic → engagement → video → awareness → other.
+### Header do cliente (compartilhado)
+- Avatar grande (56px, radius 16), nome (Inter 28/32 semibold, tracking apertado).
+- Linha de chips de plataformas com dot verde/cinza:
+  - Meta Ads, Instagram, Facebook, Google Ads, GA4, GTM, Search Console, TikTok Ads.
+- Meta-info à direita: última sincronização, fuso horário, moeda.
+- Botão primário: **Atualizar dados** (dispara refetch das queries + `updateAdAccountsForConnection`).
+- Botão secundário: excluir cliente (movido para /settings do cliente).
 
-## 4. Tooltips completos
+### Sub-navegação (tabs premium)
+Linha de pills sticky abaixo do header:
+- 📊 Dashboard · 📄 Relatórios · 📢 Campanhas · 🎨 Criativos · 🔗 Integrações · ⚙️ Configurações
+- Estilo: pills sem borda, indicador ativo com bg sutil, transição suave.
 
-Criar `<CampaignTooltip>` (Recharts custom `content`) usado em **todos** os gráficos que plotam campanhas (donut, barras, pizza, stacked). Mostra:
+## 5. Aba Dashboard
 
-- Nome completo da campanha
-- Objetivo (rótulo em pt-BR)
-- Resultado principal do grupo (com label)
-- Investimento
-- Custo por resultado
-- Participação no total (%) do dataset atual
+- Manter todo o comportamento atual de `client-dashboard.tsx`.
+- Aumentar `gap` entre grupos (from 6 → 10), padding interno de cards (from 4/5 → 6/8).
+- Aplicar novos tokens de shadow/radius, cards mais altos, tipografia maior nos KPIs.
 
-Passar o dataset com os objetos completos (não só `{name, value}`) para que o tooltip tenha contexto. Para o donut de investimento, `value = spend`; a `share` é calculada sobre `sum(spend)`.
+## 6. Aba Relatórios
 
-## 5. Ajustes secundários
+Renderiza `<ClientMetrics/>` existente com o mesmo tratamento visual (mais respiro, cards maiores).
 
-- `Highlights`, `WeekdayHeatmap`, `PeriodComparison`, `Funnel` continuam a nível de conta — mantidos.
-- `StackedCompare` removido do topo (comparava campanhas de objetivos diferentes); pode reaparecer dentro de cada grupo como opção futura, mas fora do escopo agora.
-- `ComparisonBars` de CTR/CPC também sai de fora dos grupos; nada é comparado entre objetivos.
+## 7. Aba Campanhas
 
-## Arquivos afetados
+Nova página focada em tabela/rankings de campanhas (extrai a lógica de rankings já existente em `client-dashboard.tsx` em um componente reutilizável — fase inicial pode simplesmente redirecionar a seção do dashboard).
 
-- `src/lib/meta.server.ts` — extensão de `CampaignRow`/`AdRow`, fetchers, priorização de `results`/`cost_per_result` para visitas.
-- `src/lib/metrics.server.ts` — passar novos campos adiante (nenhuma mudança de lógica agregada).
-- `src/components/client-dashboard.tsx` — novo agrupamento, componente `<ObjectiveGroup>`, `<CampaignTooltip>`, remover comparativos cross-objetivo.
+## 8. Aba Criativos
 
-Sem migrations. Sem novas rotas. Sem novos server functions.
+Grid de top ads (thumbnails maiores, estilo galeria) — reaproveita `fetchAdAccountAds` + `computeClientDashboard`.
+
+## 9. Aba Integrações (por cliente)
+
+Move todo o conteúdo de `_authenticated.app.settings.tsx` para dentro do cliente, filtrando por `client_id`. Cards individuais por plataforma:
+
+- **Meta Ads** — status, contas vinculadas ao cliente, última sync, botões [Sincronizar]/[Reconectar]/[Conectar].
+- **Instagram**, **Facebook** — placeholders "Em breve" com botão desabilitado.
+- **Google Ads**, **GA4**, **GTM**, **Search Console**, **TikTok Ads** — cards "Não conectado" com CTA [Conectar] desabilitado (placeholders).
+
+Cada card usa cor da plataforma no header/ícone; hover suave; radius 16.
+
+O fluxo real hoje só existe para Meta — mantemos isso; as outras plataformas são cards visuais "coming soon" para completar a experiência.
+
+## 10. Aba Configurações do cliente
+
+- Editar nome, cor, logo/inicial.
+- Excluir cliente (movido do header antigo).
+- Share links (mover `ShareReportCard` para cá).
+
+## 11. Página global de Configurações (sidebar)
+
+Passa a conter apenas: perfil do usuário, preferências, logout. Remover cards de integração daqui.
+
+## 12. Página de Clientes (lista)
+
+`_authenticated.app.clients.index.tsx`: cards de cliente com avatar grande, nome, chips de plataformas conectadas, contagem de contas — visual premium.
+
+## 13. Responsividade
+
+- Header do cliente: grid responsivo, meta-info empilha em mobile.
+- Sub-nav: scroll horizontal em telas pequenas.
+- Sidebar já colapsa em mobile — manter comportamento.
+
+---
+
+## Detalhes técnicos
+
+**Nova dependência:** `@fontsource-variable/inter` (via `bun add`); remover `@fontsource-variable/sora` e `@fontsource-variable/manrope`.
+
+**Reestruturação de rotas:** transformar `_authenticated.app.clients.$clientId.tsx` em layout com `<Outlet/>`. Criar arquivos irmãos por aba. `src/routeTree.gen.ts` regenera automaticamente.
+
+**Componentes novos:**
+- `src/components/client-header.tsx` — header compartilhado + linha de plataformas + botão atualizar.
+- `src/components/client-tabs.tsx` — sub-nav pills.
+- `src/components/platform-chip.tsx` — chip com dot status + cor oficial.
+- `src/components/integration-card.tsx` — card individual de integração.
+
+**Fetch de status de plataformas:** query única que lê `ad_platform_connections` + `ad_accounts` para o cliente e monta o estado dos chips (por enquanto só Meta reflete estado real; demais retornam `connected: false`).
+
+**Design tokens:** todas as cores de plataforma definidas em `src/styles.css` como CSS vars; nenhum hex hardcoded em componentes.
+
+**Botão Atualizar Dados:** chama `updateAdAccountsForConnection` para cada conexão Meta do cliente + `invalidateQueries` das keys de métricas/campaigns/ads/daily.
+
+**Manter compatibilidade:** rotas públicas `/report/$token` e `/dashboard/$token` permanecem inalteradas.
+
+---
+
+## Ordem de implementação
+
+1. Fontes (Inter) + tokens de design + cores de plataforma.
+2. Sidebar simplificada + lista de clientes com chips.
+3. Layout do cliente com header novo + sub-nav + rotas filhas.
+4. Migrar Dashboard e Relatórios para dentro das novas abas (só reembrulhar).
+5. Nova aba Integrações (por cliente) — move Meta, adiciona placeholders.
+6. Abas Campanhas / Criativos / Configurações.
+7. Ajustes finais de espaçamento no dashboard.
