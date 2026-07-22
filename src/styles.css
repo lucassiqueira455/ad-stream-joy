@@ -1,25 +1,25 @@
 @import "tailwindcss" source(none);
-@import "@fontsource-variable/sora/index.css";
-@import "@fontsource-variable/manrope/index.css";
+@import "@fontsource-variable/inter/index.css";
 @source "../src";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Trafego Pago — Design System
- * Dark analytics dashboard. All colors use oklch.
+ * Trafego Pago — Premium SaaS Design System
+ * Inter typography, soft borders, elegant shadows.
+ * Inspired by Linear, Stripe, Vercel, Notion.
  */
 
 @theme inline {
-  --font-sans: "Manrope Variable", "Manrope", sans-serif;
-  --font-display: "Sora Variable", "Sora", sans-serif;
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 6px);
   --radius-3xl: calc(var(--radius) + 12px);
 
   --color-background: var(--background);
@@ -62,70 +62,93 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --shadow-glow: 0 0 0 1px oklch(0.55 0.22 250 / 0.15), 0 8px 40px -12px oklch(0.55 0.22 250 / 0.35);
-  --shadow-card: 0 1px 0 0 oklch(1 0 0 / 0.04) inset, 0 1px 3px 0 oklch(0 0 0 / 0.4);
+  /* Platform brand colors */
+  --color-platform-meta: var(--platform-meta);
+  --color-platform-instagram: var(--platform-instagram);
+  --color-platform-facebook: var(--platform-facebook);
+  --color-platform-google: var(--platform-google);
+  --color-platform-ga4: var(--platform-ga4);
+  --color-platform-gtm: var(--platform-gtm);
+  --color-platform-tiktok: var(--platform-tiktok);
+  --color-platform-searchconsole: var(--platform-searchconsole);
 
-  --gradient-primary: linear-gradient(135deg, oklch(0.55 0.22 250) 0%, oklch(0.5 0.2 285) 100%);
+  --shadow-glow: 0 0 0 1px oklch(0.55 0.22 250 / 0.15), 0 8px 40px -12px oklch(0.55 0.22 250 / 0.35);
+  --shadow-card: 0 1px 2px 0 oklch(0 0 0 / 0.25), 0 0 0 1px oklch(1 0 0 / 0.02) inset;
+  --shadow-elevated: 0 1px 0 0 oklch(1 0 0 / 0.04) inset, 0 12px 32px -12px oklch(0 0 0 / 0.5), 0 2px 4px -2px oklch(0 0 0 / 0.3);
+  --shadow-hover: 0 1px 0 0 oklch(1 0 0 / 0.06) inset, 0 20px 48px -16px oklch(0 0 0 / 0.55);
+
+  --gradient-primary: linear-gradient(135deg, oklch(0.6 0.2 258) 0%, oklch(0.52 0.22 278) 100%);
   --gradient-surface: linear-gradient(180deg, oklch(0.19 0.025 250) 0%, oklch(0.14 0.02 245) 100%);
-  --gradient-hero: radial-gradient(ellipse 80% 60% at 50% -10%, oklch(0.55 0.22 250 / 0.25), transparent 60%),
-                   radial-gradient(ellipse 60% 50% at 90% 20%, oklch(0.5 0.2 285 / 0.18), transparent 60%);
+  --gradient-hero: radial-gradient(ellipse 80% 60% at 50% -10%, oklch(0.55 0.22 250 / 0.2), transparent 60%),
+                   radial-gradient(ellipse 60% 50% at 90% 20%, oklch(0.5 0.2 285 / 0.14), transparent 60%);
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 1rem; /* 16px base — 14-18px range through modifiers */
 
   /* Dark by default — analytics tools live in dark mode */
   --background: oklch(0.1556 0.0222 242.23);
   --foreground: oklch(0.98 0.005 260);
 
-  --card: oklch(0.2113 0.0422 236.43);
+  --card: oklch(0.198 0.033 240);
   --card-foreground: oklch(0.98 0.005 260);
 
-  --popover: oklch(0.23 0.045 242);
+  --popover: oklch(0.22 0.04 242);
   --popover-foreground: oklch(0.98 0.005 260);
 
-  --primary: oklch(0.55 0.22 250);
+  --primary: oklch(0.6 0.2 258);
   --primary-foreground: oklch(0.12 0.02 250);
 
-  --secondary: oklch(0.26 0.04 245);
+  --secondary: oklch(0.24 0.035 245);
   --secondary-foreground: oklch(0.98 0.005 260);
 
-  --muted: oklch(0.24 0.04 245);
-  --muted-foreground: oklch(0.65 0.02 250);
+  --muted: oklch(0.22 0.035 245);
+  --muted-foreground: oklch(0.68 0.018 250);
 
-  --accent: oklch(0.3 0.05 245);
+  --accent: oklch(0.27 0.045 250);
   --accent-foreground: oklch(0.98 0.005 260);
 
   --destructive: oklch(0.65 0.22 25);
   --destructive-foreground: oklch(0.98 0.005 260);
 
-  --success: oklch(0.7 0.18 155);
+  --success: oklch(0.72 0.16 155);
   --success-foreground: oklch(0.15 0.02 155);
 
   --warning: oklch(0.82 0.16 85);
   --warning-foreground: oklch(0.2 0.03 85);
 
-  --meta: oklch(0.55 0.22 250);          /* Meta / Facebook blue */
-  --google: oklch(0.72 0.19 45);        /* Google warm */
+  --meta: oklch(0.6 0.2 258);
+  --google: oklch(0.72 0.17 145);
 
-  --border: oklch(0.25 0.04 250);
-  --input: oklch(0.23 0.04 250);
-  --ring: oklch(0.55 0.22 250);
+  /* Softer, quieter borders */
+  --border: oklch(1 0 0 / 0.06);
+  --input: oklch(1 0 0 / 0.06);
+  --ring: oklch(0.6 0.2 258);
 
-  --chart-1: oklch(0.55 0.22 250);
-  --chart-2: oklch(0.5 0.2 285);
-  --chart-3: oklch(0.72 0.19 45);
-  --chart-4: oklch(0.7 0.2 305);
-  --chart-5: oklch(0.65 0.18 195);
+  --chart-1: oklch(0.6 0.2 258);
+  --chart-2: oklch(0.55 0.22 285);
+  --chart-3: oklch(0.72 0.17 145);
+  --chart-4: oklch(0.75 0.18 55);
+  --chart-5: oklch(0.68 0.18 195);
 
-  --sidebar: oklch(0.12 0.02 245);
-  --sidebar-foreground: oklch(0.9 0.01 250);
-  --sidebar-primary: oklch(0.55 0.22 250);
+  --sidebar: oklch(0.135 0.024 244);
+  --sidebar-foreground: oklch(0.92 0.008 250);
+  --sidebar-primary: oklch(0.6 0.2 258);
   --sidebar-primary-foreground: oklch(0.12 0.02 250);
-  --sidebar-accent: oklch(0.22 0.04 245);
+  --sidebar-accent: oklch(0.22 0.038 245);
   --sidebar-accent-foreground: oklch(0.98 0.005 260);
-  --sidebar-border: oklch(0.22 0.04 245);
-  --sidebar-ring: oklch(0.55 0.22 250);
+  --sidebar-border: oklch(1 0 0 / 0.05);
+  --sidebar-ring: oklch(0.6 0.2 258);
+
+  /* Platform brand colors — official-ish */
+  --platform-meta: oklch(0.6 0.2 258);          /* Meta blue */
+  --platform-instagram: oklch(0.65 0.22 340);   /* IG magenta */
+  --platform-facebook: oklch(0.58 0.19 254);    /* FB blue */
+  --platform-google: oklch(0.72 0.17 145);      /* Google green */
+  --platform-ga4: oklch(0.75 0.17 55);          /* GA4 orange */
+  --platform-gtm: oklch(0.52 0.16 245);         /* GTM dark blue */
+  --platform-tiktok: oklch(0.28 0.02 220);      /* TikTok black */
+  --platform-searchconsole: oklch(0.6 0.16 155); /* Search Console green */
 }
 
 @layer base {
@@ -136,18 +159,28 @@
   html {
     font-family: var(--font-sans);
     background-color: var(--color-background);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.011em;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.022em;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+  }
+
+  /* Global smooth transitions on interactive surfaces */
+  button, a {
+    transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease,
+      box-shadow 200ms ease, transform 200ms ease, opacity 160ms ease;
   }
 }
 
@@ -168,4 +201,11 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+@utility card-premium {
+  background-color: var(--color-card);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-elevated);
+  border: 1px solid var(--color-border);
 }
