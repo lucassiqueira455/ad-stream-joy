@@ -25,7 +25,9 @@ import { Route as AuthenticatedAppClientsIndexRouteImport } from './routes/_auth
 import { Route as ApiAuthMetaCallbackRouteImport } from './routes/api/auth/meta.callback'
 import { Route as AuthenticatedAppClientsClientIdRouteImport } from './routes/_authenticated.app.clients.$clientId'
 import { Route as AuthenticatedAppClientsClientIdIndexRouteImport } from './routes/_authenticated.app.clients.$clientId.index'
+import { Route as AuthenticatedAppClientsClientIdSettingsRouteImport } from './routes/_authenticated.app.clients.$clientId.settings'
 import { Route as AuthenticatedAppClientsClientIdReportsRouteImport } from './routes/_authenticated.app.clients.$clientId.reports'
+import { Route as AuthenticatedAppClientsClientIdIntegrationsRouteImport } from './routes/_authenticated.app.clients.$clientId.integrations'
 import { Route as AuthenticatedAppClientsClientIdCreativesRouteImport } from './routes/_authenticated.app.clients.$clientId.creatives'
 import { Route as AuthenticatedAppClientsClientIdCampaignsRouteImport } from './routes/_authenticated.app.clients.$clientId.campaigns'
 
@@ -112,10 +114,22 @@ const AuthenticatedAppClientsClientIdIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedAppClientsClientIdRoute,
   } as any)
+const AuthenticatedAppClientsClientIdSettingsRoute =
+  AuthenticatedAppClientsClientIdSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedAppClientsClientIdRoute,
+  } as any)
 const AuthenticatedAppClientsClientIdReportsRoute =
   AuthenticatedAppClientsClientIdReportsRouteImport.update({
     id: '/reports',
     path: '/reports',
+    getParentRoute: () => AuthenticatedAppClientsClientIdRoute,
+  } as any)
+const AuthenticatedAppClientsClientIdIntegrationsRoute =
+  AuthenticatedAppClientsClientIdIntegrationsRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
     getParentRoute: () => AuthenticatedAppClientsClientIdRoute,
   } as any)
 const AuthenticatedAppClientsClientIdCreativesRoute =
@@ -148,7 +162,9 @@ export interface FileRoutesByFullPath {
   '/app/clients/': typeof AuthenticatedAppClientsIndexRoute
   '/app/clients/$clientId/campaigns': typeof AuthenticatedAppClientsClientIdCampaignsRoute
   '/app/clients/$clientId/creatives': typeof AuthenticatedAppClientsClientIdCreativesRoute
+  '/app/clients/$clientId/integrations': typeof AuthenticatedAppClientsClientIdIntegrationsRoute
   '/app/clients/$clientId/reports': typeof AuthenticatedAppClientsClientIdReportsRoute
+  '/app/clients/$clientId/settings': typeof AuthenticatedAppClientsClientIdSettingsRoute
   '/app/clients/$clientId/': typeof AuthenticatedAppClientsClientIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -165,7 +181,9 @@ export interface FileRoutesByTo {
   '/app/clients': typeof AuthenticatedAppClientsIndexRoute
   '/app/clients/$clientId/campaigns': typeof AuthenticatedAppClientsClientIdCampaignsRoute
   '/app/clients/$clientId/creatives': typeof AuthenticatedAppClientsClientIdCreativesRoute
+  '/app/clients/$clientId/integrations': typeof AuthenticatedAppClientsClientIdIntegrationsRoute
   '/app/clients/$clientId/reports': typeof AuthenticatedAppClientsClientIdReportsRoute
+  '/app/clients/$clientId/settings': typeof AuthenticatedAppClientsClientIdSettingsRoute
   '/app/clients/$clientId': typeof AuthenticatedAppClientsClientIdIndexRoute
 }
 export interface FileRoutesById {
@@ -187,7 +205,9 @@ export interface FileRoutesById {
   '/_authenticated/app/clients/': typeof AuthenticatedAppClientsIndexRoute
   '/_authenticated/app/clients/$clientId/campaigns': typeof AuthenticatedAppClientsClientIdCampaignsRoute
   '/_authenticated/app/clients/$clientId/creatives': typeof AuthenticatedAppClientsClientIdCreativesRoute
+  '/_authenticated/app/clients/$clientId/integrations': typeof AuthenticatedAppClientsClientIdIntegrationsRoute
   '/_authenticated/app/clients/$clientId/reports': typeof AuthenticatedAppClientsClientIdReportsRoute
+  '/_authenticated/app/clients/$clientId/settings': typeof AuthenticatedAppClientsClientIdSettingsRoute
   '/_authenticated/app/clients/$clientId/': typeof AuthenticatedAppClientsClientIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -209,7 +229,9 @@ export interface FileRouteTypes {
     | '/app/clients/'
     | '/app/clients/$clientId/campaigns'
     | '/app/clients/$clientId/creatives'
+    | '/app/clients/$clientId/integrations'
     | '/app/clients/$clientId/reports'
+    | '/app/clients/$clientId/settings'
     | '/app/clients/$clientId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -226,7 +248,9 @@ export interface FileRouteTypes {
     | '/app/clients'
     | '/app/clients/$clientId/campaigns'
     | '/app/clients/$clientId/creatives'
+    | '/app/clients/$clientId/integrations'
     | '/app/clients/$clientId/reports'
+    | '/app/clients/$clientId/settings'
     | '/app/clients/$clientId'
   id:
     | '__root__'
@@ -247,7 +271,9 @@ export interface FileRouteTypes {
     | '/_authenticated/app/clients/'
     | '/_authenticated/app/clients/$clientId/campaigns'
     | '/_authenticated/app/clients/$clientId/creatives'
+    | '/_authenticated/app/clients/$clientId/integrations'
     | '/_authenticated/app/clients/$clientId/reports'
+    | '/_authenticated/app/clients/$clientId/settings'
     | '/_authenticated/app/clients/$clientId/'
   fileRoutesById: FileRoutesById
 }
@@ -374,11 +400,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppClientsClientIdIndexRouteImport
       parentRoute: typeof AuthenticatedAppClientsClientIdRoute
     }
+    '/_authenticated/app/clients/$clientId/settings': {
+      id: '/_authenticated/app/clients/$clientId/settings'
+      path: '/settings'
+      fullPath: '/app/clients/$clientId/settings'
+      preLoaderRoute: typeof AuthenticatedAppClientsClientIdSettingsRouteImport
+      parentRoute: typeof AuthenticatedAppClientsClientIdRoute
+    }
     '/_authenticated/app/clients/$clientId/reports': {
       id: '/_authenticated/app/clients/$clientId/reports'
       path: '/reports'
       fullPath: '/app/clients/$clientId/reports'
       preLoaderRoute: typeof AuthenticatedAppClientsClientIdReportsRouteImport
+      parentRoute: typeof AuthenticatedAppClientsClientIdRoute
+    }
+    '/_authenticated/app/clients/$clientId/integrations': {
+      id: '/_authenticated/app/clients/$clientId/integrations'
+      path: '/integrations'
+      fullPath: '/app/clients/$clientId/integrations'
+      preLoaderRoute: typeof AuthenticatedAppClientsClientIdIntegrationsRouteImport
       parentRoute: typeof AuthenticatedAppClientsClientIdRoute
     }
     '/_authenticated/app/clients/$clientId/creatives': {
@@ -401,7 +441,9 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAppClientsClientIdRouteChildren {
   AuthenticatedAppClientsClientIdCampaignsRoute: typeof AuthenticatedAppClientsClientIdCampaignsRoute
   AuthenticatedAppClientsClientIdCreativesRoute: typeof AuthenticatedAppClientsClientIdCreativesRoute
+  AuthenticatedAppClientsClientIdIntegrationsRoute: typeof AuthenticatedAppClientsClientIdIntegrationsRoute
   AuthenticatedAppClientsClientIdReportsRoute: typeof AuthenticatedAppClientsClientIdReportsRoute
+  AuthenticatedAppClientsClientIdSettingsRoute: typeof AuthenticatedAppClientsClientIdSettingsRoute
   AuthenticatedAppClientsClientIdIndexRoute: typeof AuthenticatedAppClientsClientIdIndexRoute
 }
 
@@ -411,8 +453,12 @@ const AuthenticatedAppClientsClientIdRouteChildren: AuthenticatedAppClientsClien
       AuthenticatedAppClientsClientIdCampaignsRoute,
     AuthenticatedAppClientsClientIdCreativesRoute:
       AuthenticatedAppClientsClientIdCreativesRoute,
+    AuthenticatedAppClientsClientIdIntegrationsRoute:
+      AuthenticatedAppClientsClientIdIntegrationsRoute,
     AuthenticatedAppClientsClientIdReportsRoute:
       AuthenticatedAppClientsClientIdReportsRoute,
+    AuthenticatedAppClientsClientIdSettingsRoute:
+      AuthenticatedAppClientsClientIdSettingsRoute,
     AuthenticatedAppClientsClientIdIndexRoute:
       AuthenticatedAppClientsClientIdIndexRoute,
   }
