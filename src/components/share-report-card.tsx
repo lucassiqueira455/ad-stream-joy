@@ -164,17 +164,10 @@ export function ShareReportCard({ clientId }: { clientId: string }) {
               {activeMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               {share.active ? "Desativar compartilhamento" : "Ativar compartilhamento"}
             </button>
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={share.allow_date_change}
-                disabled={dateMutation.isPending}
-                onChange={(e) => dateMutation.mutate(e.target.checked)}
-                className="h-4 w-4 accent-primary"
-              />
-              <span>Permitir alterar o período nos links</span>
-            </label>
-          </div>
+            <p className="text-xs text-muted-foreground">
+              O cliente pode alterar o período nos links e os dados atualizam em tempo real.
+            </p>
+
         </div>
       )}
     </section>
