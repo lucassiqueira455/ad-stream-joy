@@ -167,8 +167,9 @@ export function ShareReportCard({ clientId }: { clientId: string }) {
             <p className="text-xs text-muted-foreground">
               O cliente pode alterar o período nos links e os dados atualizam em tempo real.
             </p>
-
+          </div>
         </div>
+
       )}
     </section>
   );
