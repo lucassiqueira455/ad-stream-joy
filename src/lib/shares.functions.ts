@@ -128,11 +128,11 @@ export const getPublicReport = createServerFn({ method: "POST" })
     if (cErr) throw cErr;
     if (!client) throw new Error("Cliente não encontrado");
 
-    const effectivePreset = share.allow_date_change && data.datePreset ? data.datePreset : "last_30d";
+    const effectivePreset = data.datePreset ?? "last_30d";
     const { computeClientMetrics } = await import("./metrics.server");
     const metrics = await computeClientMetrics(supabaseAdmin, share.client_id, effectivePreset);
 
-    return { client, allowDateChange: share.allow_date_change, datePreset: effectivePreset, metrics };
+    return { client, allowDateChange: true, datePreset: effectivePreset, metrics };
   });
 
 // Public: dashboard data by dashboard_token.
@@ -158,9 +158,9 @@ export const getPublicDashboard = createServerFn({ method: "POST" })
     if (cErr) throw cErr;
     if (!client) throw new Error("Cliente não encontrado");
 
-    const effectivePreset = share.allow_date_change && data.datePreset ? data.datePreset : "last_30d";
+    const effectivePreset = data.datePreset ?? "last_30d";
     const { computeClientDashboard } = await import("./metrics.server");
     const dashboard = await computeClientDashboard(supabaseAdmin, share.client_id, effectivePreset);
 
-    return { client, allowDateChange: share.allow_date_change, datePreset: effectivePreset, dashboard };
+    return { client, allowDateChange: true, datePreset: effectivePreset, dashboard };
   });
