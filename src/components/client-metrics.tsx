@@ -180,6 +180,9 @@ export function ClientMetrics({ clientId, hasAccounts, publicToken, allowDateCha
     enabled: hasAccounts,
     staleTime: 0,
     refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: publicToken ? 60_000 : false,
+    refetchIntervalInBackground: !!publicToken,
   });
 
 
