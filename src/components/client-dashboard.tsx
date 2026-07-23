@@ -398,6 +398,9 @@ export function ClientDashboardView({
     enabled: hasAccounts,
     staleTime: 0,
     refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: publicToken ? 60_000 : false,
+    refetchIntervalInBackground: !!publicToken,
   });
 
   type DashboardData = Awaited<ReturnType<typeof getClientDashboard>>;
