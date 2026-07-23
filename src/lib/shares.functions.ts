@@ -162,5 +162,5 @@ export const getPublicDashboard = createServerFn({ method: "POST" })
     const { computeClientDashboard } = await import("./metrics.server");
     const dashboard = await computeClientDashboard(supabaseAdmin, share.client_id, effectivePreset);
 
-    return { client, allowDateChange: share.allow_date_change, datePreset: effectivePreset, dashboard };
+    return { client, allowDateChange: true, datePreset: effectivePreset, dashboard };
   });
