@@ -158,7 +158,7 @@ export const getPublicDashboard = createServerFn({ method: "POST" })
     if (cErr) throw cErr;
     if (!client) throw new Error("Cliente não encontrado");
 
-    const effectivePreset = share.allow_date_change && data.datePreset ? data.datePreset : "last_30d";
+    const effectivePreset = data.datePreset ?? "last_30d";
     const { computeClientDashboard } = await import("./metrics.server");
     const dashboard = await computeClientDashboard(supabaseAdmin, share.client_id, effectivePreset);
 
