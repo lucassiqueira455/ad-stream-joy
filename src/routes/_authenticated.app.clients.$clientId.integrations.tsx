@@ -8,6 +8,7 @@ import {
   listConnections,
   listAdAccounts,
   startMetaOAuth,
+  startGoogleOAuth,
   disconnectPlatform,
   assignAdAccountToClient,
 } from "@/lib/ads-connections.functions";
@@ -41,15 +42,19 @@ function IntegrationsTab() {
   const { data: accounts } = useSuspenseQuery(adAccountsQuery);
 
   const startMeta = useServerFn(startMetaOAuth);
+  const startGoogle = useServerFn(startGoogleOAuth);
   const disconnect = useServerFn(disconnectPlatform);
   const assign = useServerFn(assignAdAccountToClient);
 
-  const [connecting, setConnecting] = useState(false);
+  const [connecting, setConnecting] = useState<null | "meta" | "google">(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const metaConn = connections.find((c) => c.platform === "meta");
+  const googleConn = connections.find((c) => c.platform === "google");
   const clientMetaAccounts = accounts.filter((a) => a.platform === "meta" && a.client_id === clientId);
   const availableMetaAccounts = accounts.filter((a) => a.platform === "meta" && !a.client_id);
+  const clientGoogleAccounts = accounts.filter((a) => a.platform === "google" && a.client_id === clientId);
+  const availableGoogleAccounts = accounts.filter((a) => a.platform === "google" && !a.client_id);
 
   const handleConnectMeta = async () => {
     setConnecting(true);
