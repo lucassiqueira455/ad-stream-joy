@@ -336,10 +336,9 @@ function IntegrationsTab() {
           }
         />
 
-        {/* Google Ads / GA4 / GTM / Search Console / TikTok — placeholders */}
+        {/* GA4 / GTM / Search Console / TikTok — placeholders */}
         {(
           [
-            { p: "google", desc: "Search, Display, YouTube e Performance Max." },
             { p: "ga4", desc: "Sessões, conversões e origem de tráfego." },
             { p: "gtm", desc: "Contêineres, tags e triggers." },
             { p: "searchconsole", desc: "Impressões, cliques e posição no Google." },
