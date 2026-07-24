@@ -56,20 +56,35 @@ function IntegrationsTab() {
   const clientGoogleAccounts = accounts.filter((a) => a.platform === "google" && a.client_id === clientId);
   const availableGoogleAccounts = accounts.filter((a) => a.platform === "google" && !a.client_id);
 
+  const redirectToOAuth = (url: string) => {
+    try {
+      if (window.top && window.top !== window.self) window.top.location.href = url;
+      else window.location.href = url;
+    } catch {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
   const handleConnectMeta = async () => {
-    setConnecting(true);
+    setConnecting("meta");
     try {
       const res = await startMeta();
-      try {
-        if (window.top && window.top !== window.self) window.top.location.href = res.url;
-        else window.location.href = res.url;
-      } catch {
-        window.open(res.url, "_blank", "noopener,noreferrer");
-        setConnecting(false);
-      }
+      redirectToOAuth(res.url);
     } catch (e) {
       console.error(e);
-      setConnecting(false);
+      setConnecting(null);
+    }
+  };
+
+  const handleConnectGoogle = async () => {
+    setConnecting("google");
+    try {
+      const res = await startGoogle();
+      redirectToOAuth(res.url);
+    } catch (e) {
+      console.error(e);
+      setConnecting(null);
+      alert("Não foi possível iniciar a conexão com o Google. Verifique as credenciais.");
     }
   };
 
@@ -85,12 +100,12 @@ function IntegrationsTab() {
     }
   };
 
-  const handleDisconnect = async () => {
-    if (!metaConn) return;
-    if (!confirm("Desconectar Meta Ads? Todas as contas associadas serão desvinculadas dos clientes.")) return;
-    setBusy(metaConn.id);
+  const handleDisconnect = async (conn: { id: string; platform: string } | undefined, label: string) => {
+    if (!conn) return;
+    if (!confirm(`Desconectar ${label}? Todas as contas associadas serão desvinculadas dos clientes.`)) return;
+    setBusy(conn.id);
     try {
-      await disconnect({ data: { connectionId: metaConn.id } });
+      await disconnect({ data: { connectionId: conn.id } });
       await qc.invalidateQueries({ queryKey: ["ad-connections"] });
       await qc.invalidateQueries({ queryKey: ["ad-accounts"] });
       router.invalidate();
