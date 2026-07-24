@@ -8,6 +8,7 @@ import {
   listConnections,
   listAdAccounts,
   startMetaOAuth,
+  startGoogleOAuth,
   disconnectPlatform,
   assignAdAccountToClient,
 } from "@/lib/ads-connections.functions";
@@ -41,30 +42,49 @@ function IntegrationsTab() {
   const { data: accounts } = useSuspenseQuery(adAccountsQuery);
 
   const startMeta = useServerFn(startMetaOAuth);
+  const startGoogle = useServerFn(startGoogleOAuth);
   const disconnect = useServerFn(disconnectPlatform);
   const assign = useServerFn(assignAdAccountToClient);
 
-  const [connecting, setConnecting] = useState(false);
+  const [connecting, setConnecting] = useState<null | "meta" | "google">(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const metaConn = connections.find((c) => c.platform === "meta");
+  const googleConn = connections.find((c) => c.platform === "google");
   const clientMetaAccounts = accounts.filter((a) => a.platform === "meta" && a.client_id === clientId);
   const availableMetaAccounts = accounts.filter((a) => a.platform === "meta" && !a.client_id);
+  const clientGoogleAccounts = accounts.filter((a) => a.platform === "google" && a.client_id === clientId);
+  const availableGoogleAccounts = accounts.filter((a) => a.platform === "google" && !a.client_id);
+
+  const redirectToOAuth = (url: string) => {
+    try {
+      if (window.top && window.top !== window.self) window.top.location.href = url;
+      else window.location.href = url;
+    } catch {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
 
   const handleConnectMeta = async () => {
-    setConnecting(true);
+    setConnecting("meta");
     try {
       const res = await startMeta();
-      try {
-        if (window.top && window.top !== window.self) window.top.location.href = res.url;
-        else window.location.href = res.url;
-      } catch {
-        window.open(res.url, "_blank", "noopener,noreferrer");
-        setConnecting(false);
-      }
+      redirectToOAuth(res.url);
     } catch (e) {
       console.error(e);
-      setConnecting(false);
+      setConnecting(null);
+    }
+  };
+
+  const handleConnectGoogle = async () => {
+    setConnecting("google");
+    try {
+      const res = await startGoogle();
+      redirectToOAuth(res.url);
+    } catch (e) {
+      console.error(e);
+      setConnecting(null);
+      alert("Não foi possível iniciar a conexão com o Google. Verifique as credenciais.");
     }
   };
 
@@ -80,12 +100,12 @@ function IntegrationsTab() {
     }
   };
 
-  const handleDisconnect = async () => {
-    if (!metaConn) return;
-    if (!confirm("Desconectar Meta Ads? Todas as contas associadas serão desvinculadas dos clientes.")) return;
-    setBusy(metaConn.id);
+  const handleDisconnect = async (conn: { id: string; platform: string } | undefined, label: string) => {
+    if (!conn) return;
+    if (!confirm(`Desconectar ${label}? Todas as contas associadas serão desvinculadas dos clientes.`)) return;
+    setBusy(conn.id);
     try {
-      await disconnect({ data: { connectionId: metaConn.id } });
+      await disconnect({ data: { connectionId: conn.id } });
       await qc.invalidateQueries({ queryKey: ["ad-connections"] });
       await qc.invalidateQueries({ queryKey: ["ad-accounts"] });
       router.invalidate();
@@ -146,10 +166,10 @@ function IntegrationsTab() {
             !metaConn ? (
               <button
                 onClick={handleConnectMeta}
-                disabled={connecting}
+                disabled={connecting === "meta"}
                 className="inline-flex items-center gap-2 rounded-xl gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow disabled:opacity-60"
               >
-                {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                {connecting === "meta" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
                 Conectar
               </button>
             ) : (
@@ -169,14 +189,94 @@ function IntegrationsTab() {
                 )}
                 <button
                   onClick={handleConnectMeta}
-                  disabled={connecting}
+                  disabled={connecting === "meta"}
                   className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-60"
                 >
                   Reconectar
                 </button>
                 <button
-                  onClick={handleDisconnect}
+                  onClick={() => handleDisconnect(metaConn, "Meta Ads")}
                   disabled={busy === metaConn.id}
+                  className="inline-flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-60"
+                >
+                  Desconectar
+                </button>
+              </>
+            )
+          }
+        />
+
+        {/* Google Ads */}
+        <IntegrationCard
+          platform="google"
+          status={googleConn ? "connected" : "disconnected"}
+          description="Search, Display, YouTube e Performance Max."
+          meta={
+            googleConn && (
+              <div className="space-y-1">
+                <p className="text-xs">
+                  <span className="text-muted-foreground">Conta OAuth:</span>{" "}
+                  <span className="text-foreground">{googleConn.display_name ?? "Google"}</span>
+                </p>
+                <p className="text-xs">
+                  <span className="text-muted-foreground">Contas vinculadas:</span>{" "}
+                  <span className="text-foreground">{clientGoogleAccounts.length}</span>
+                </p>
+                {clientGoogleAccounts.length > 0 && (
+                  <ul className="mt-3 space-y-1">
+                    {clientGoogleAccounts.map((a) => (
+                      <li key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/40 px-3 py-1.5 text-xs">
+                        <span className="min-w-0 truncate text-foreground">{a.account_name}</span>
+                        <button
+                          onClick={() => handleAssign(a.id, null)}
+                          disabled={busy === a.id}
+                          className="rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          aria-label="Desvincular"
+                        >
+                          {busy === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )
+          }
+          actions={
+            !googleConn ? (
+              <button
+                onClick={handleConnectGoogle}
+                disabled={connecting === "google"}
+                className="inline-flex items-center gap-2 rounded-xl gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow disabled:opacity-60"
+              >
+                {connecting === "google" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                Conectar
+              </button>
+            ) : (
+              <>
+                {availableGoogleAccounts.length > 0 && (
+                  <select
+                    onChange={(e) => e.target.value && handleAssign(e.target.value, clientId)}
+                    defaultValue=""
+                    disabled={busy !== null}
+                    className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">+ Vincular conta…</option>
+                    {availableGoogleAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>{a.account_name}</option>
+                    ))}
+                  </select>
+                )}
+                <button
+                  onClick={handleConnectGoogle}
+                  disabled={connecting === "google"}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-60"
+                >
+                  Reconectar
+                </button>
+                <button
+                  onClick={() => handleDisconnect(googleConn, "Google Ads")}
+                  disabled={busy === googleConn.id}
                   className="inline-flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-60"
                 >
                   Desconectar
@@ -202,7 +302,7 @@ function IntegrationsTab() {
             !metaConn ? (
               <button
                 onClick={handleConnectMeta}
-                disabled={connecting}
+                disabled={connecting === "meta"}
                 className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-60"
               >
                 Conectar via Meta
@@ -227,7 +327,7 @@ function IntegrationsTab() {
             !metaConn ? (
               <button
                 onClick={handleConnectMeta}
-                disabled={connecting}
+                disabled={connecting === "meta"}
                 className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-60"
               >
                 Conectar via Meta
@@ -236,10 +336,9 @@ function IntegrationsTab() {
           }
         />
 
-        {/* Google Ads / GA4 / GTM / Search Console / TikTok — placeholders */}
+        {/* GA4 / GTM / Search Console / TikTok — placeholders */}
         {(
           [
-            { p: "google", desc: "Search, Display, YouTube e Performance Max." },
             { p: "ga4", desc: "Sessões, conversões e origem de tráfego." },
             { p: "gtm", desc: "Contêineres, tags e triggers." },
             { p: "searchconsole", desc: "Impressões, cliques e posição no Google." },

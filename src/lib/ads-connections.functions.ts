@@ -23,6 +23,17 @@ export const startMetaOAuth = createServerFn({ method: "POST" })
     return { url: buildMetaAuthUrl({ redirectUri, state }) };
   });
 
+// Build Google Ads OAuth URL.
+export const startGoogleOAuth = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { buildGoogleAuthUrl } = await import("./google.server");
+    const { signState } = await import("./crypto.server");
+    const redirectUri = `${getOrigin()}/api/auth/google/callback`;
+    const state = signState({ uid: context.userId, redirectUri, platform: "google" });
+    return { url: buildGoogleAuthUrl({ redirectUri, state }) };
+  });
+
 export const listConnections = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
