@@ -2,7 +2,7 @@
 // Uses OAuth2 (offline access) + Google Ads API listAccessibleCustomers.
 
 export const GOOGLE_ADS_SCOPES = ["https://www.googleapis.com/auth/adwords"];
-const GOOGLE_ADS_API = "https://googleads.googleapis.com/v18";
+const GOOGLE_ADS_API = "https://googleads.googleapis.com/v21";
 
 export function buildGoogleAuthUrl(params: { redirectUri: string; state: string }): string {
   const clientId = process.env.GOOGLE_CLIENT_ID;
