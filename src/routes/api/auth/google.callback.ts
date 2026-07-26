@@ -31,8 +31,10 @@ export const Route = createFileRoute("/api/auth/google/callback")({
           });
 
           const me = await fetchGoogleUserInfo(token.access_token);
+          let importError: string | null = null;
           const customers = await fetchAllAccessibleCustomerDetails(token.access_token).catch((e) => {
             console.error("Google Ads listAccessible failed", e);
+            importError = e instanceof Error ? e.message : String(e);
             return [];
           });
 
