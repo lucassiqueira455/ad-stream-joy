@@ -84,7 +84,7 @@ export const Route = createFileRoute("/api/auth/google/callback")({
           return redirectWith(backTo, {
             google: importError ? "import_error" : "connected",
             count: String(customers.length),
-            ...(importError ? { msg: importError.slice(0, 200) } : {}),
+            ...(importError ? { msg: (importError as string).slice(0, 200) } : {}),
           });
         } catch (e) {
           console.error("Google callback error", e);
