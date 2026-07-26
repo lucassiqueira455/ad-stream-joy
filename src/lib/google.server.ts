@@ -173,9 +173,19 @@ export async function fetchAllAccessibleCustomerDetails(
 ): Promise<GoogleAdsCustomer[]> {
   const ids = await listAccessibleCustomers(accessToken);
   const results = await Promise.all(
-    ids.map((id) => fetchCustomerDetails(accessToken, id).catch(() => null)),
+    ids.map(async (id): Promise<GoogleAdsCustomer> => {
+      try {
+        const details = await fetchCustomerDetails(accessToken, id);
+        if (details) return details;
+      } catch (e) {
+        console.error(`fetchCustomerDetails ${id} threw`, e);
+      }
+      // Fallback: return the id so the user can still see/select the account,
+      // even if details lookup failed (common when the account sits under an MCC).
+      return { id, descriptiveName: `Google Ads ${id}` };
+    }),
   );
-  return results.filter((c): c is GoogleAdsCustomer => c !== null);
+  return results;
 }
 
 export function googleStatusLabel(status: string | undefined): string {
