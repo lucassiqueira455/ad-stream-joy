@@ -81,7 +81,11 @@ export const Route = createFileRoute("/api/auth/google/callback")({
             if (accErr) console.error("Upsert google ad_accounts failed", accErr);
           }
 
-          return redirectWith(backTo, { google: "connected", count: String(customers.length) });
+          return redirectWith(backTo, {
+            google: importError ? "import_error" : "connected",
+            count: String(customers.length),
+            ...(importError ? { msg: importError.slice(0, 200) } : {}),
+          });
         } catch (e) {
           console.error("Google callback error", e);
           return redirectWith(backTo, { google: "error" });
