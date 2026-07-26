@@ -3,12 +3,11 @@
 @source "../src";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark, .dark *));
 
 /*
- * Trafego Pago — Premium SaaS Design System
- * Inter typography, soft borders, elegant shadows.
- * Inspired by Linear, Stripe, Vercel, Notion.
+ * Analizze — Premium SaaS Design System
+ * Light-first, dark available via `.dark` class on <html>.
  */
 
 @theme inline {
@@ -62,7 +61,6 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Platform brand colors */
   --color-platform-meta: var(--platform-meta);
   --color-platform-instagram: var(--platform-instagram);
   --color-platform-facebook: var(--platform-facebook);
@@ -72,21 +70,90 @@
   --color-platform-tiktok: var(--platform-tiktok);
   --color-platform-searchconsole: var(--platform-searchconsole);
 
-  --shadow-glow: 0 0 0 1px oklch(0.55 0.22 250 / 0.15), 0 8px 40px -12px oklch(0.55 0.22 250 / 0.35);
-  --shadow-card: 0 1px 2px 0 oklch(0 0 0 / 0.25), 0 0 0 1px oklch(1 0 0 / 0.02) inset;
-  --shadow-elevated: 0 1px 0 0 oklch(1 0 0 / 0.04) inset, 0 12px 32px -12px oklch(0 0 0 / 0.5), 0 2px 4px -2px oklch(0 0 0 / 0.3);
-  --shadow-hover: 0 1px 0 0 oklch(1 0 0 / 0.06) inset, 0 20px 48px -16px oklch(0 0 0 / 0.55);
-
-  --gradient-primary: linear-gradient(135deg, oklch(0.6 0.2 258) 0%, oklch(0.52 0.22 278) 100%);
-  --gradient-surface: linear-gradient(180deg, oklch(0.19 0.025 250) 0%, oklch(0.14 0.02 245) 100%);
-  --gradient-hero: radial-gradient(ellipse 80% 60% at 50% -10%, oklch(0.55 0.22 250 / 0.2), transparent 60%),
-                   radial-gradient(ellipse 60% 50% at 90% 20%, oklch(0.5 0.2 285 / 0.14), transparent 60%);
+  --shadow-glow: var(--shadow-glow-token);
+  --shadow-card: var(--shadow-card-token);
+  --shadow-elevated: var(--shadow-elevated-token);
+  --shadow-hover: var(--shadow-hover-token);
 }
 
+/* ============ LIGHT (default) ============ */
 :root {
-  --radius: 1rem; /* 16px base — 14-18px range through modifiers */
+  --radius: 1rem;
 
-  /* Dark by default — analytics tools live in dark mode */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.18 0.02 250);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 250);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 250);
+
+  --primary: oklch(0.56 0.22 262);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.97 0.01 250);
+  --secondary-foreground: oklch(0.2 0.02 250);
+
+  --muted: oklch(0.97 0.008 250);
+  --muted-foreground: oklch(0.52 0.02 250);
+
+  --accent: oklch(0.96 0.02 262);
+  --accent-foreground: oklch(0.2 0.03 262);
+
+  --destructive: oklch(0.6 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --success: oklch(0.62 0.16 155);
+  --success-foreground: oklch(0.99 0 0);
+
+  --warning: oklch(0.75 0.16 75);
+  --warning-foreground: oklch(0.2 0.03 75);
+
+  --meta: oklch(0.56 0.22 262);
+  --google: oklch(0.6 0.17 145);
+
+  --border: oklch(0.92 0.008 250);
+  --input: oklch(0.92 0.008 250);
+  --ring: oklch(0.56 0.22 262);
+
+  --chart-1: oklch(0.56 0.22 262);
+  --chart-2: oklch(0.55 0.22 300);
+  --chart-3: oklch(0.62 0.17 155);
+  --chart-4: oklch(0.72 0.18 55);
+  --chart-5: oklch(0.6 0.18 210);
+
+  --sidebar: oklch(0.985 0.004 250);
+  --sidebar-foreground: oklch(0.22 0.02 250);
+  --sidebar-primary: oklch(0.56 0.22 262);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.95 0.02 262);
+  --sidebar-accent-foreground: oklch(0.22 0.03 262);
+  --sidebar-border: oklch(0.92 0.008 250);
+  --sidebar-ring: oklch(0.56 0.22 262);
+
+  --platform-meta: oklch(0.56 0.22 262);
+  --platform-instagram: oklch(0.6 0.22 340);
+  --platform-facebook: oklch(0.55 0.19 254);
+  --platform-google: oklch(0.62 0.17 145);
+  --platform-ga4: oklch(0.72 0.17 55);
+  --platform-gtm: oklch(0.52 0.16 245);
+  --platform-tiktok: oklch(0.28 0.02 220);
+  --platform-searchconsole: oklch(0.6 0.16 155);
+
+  --shadow-glow-token: 0 0 0 1px oklch(0.56 0.22 262 / 0.18), 0 12px 40px -12px oklch(0.56 0.22 262 / 0.35);
+  --shadow-card-token: 0 1px 2px 0 oklch(0.2 0.02 250 / 0.05), 0 0 0 1px oklch(0.2 0.02 250 / 0.04);
+  --shadow-elevated-token: 0 1px 2px 0 oklch(0.2 0.02 250 / 0.06), 0 12px 32px -12px oklch(0.2 0.02 250 / 0.14);
+  --shadow-hover-token: 0 20px 48px -16px oklch(0.2 0.02 250 / 0.18);
+
+  --gradient-primary: linear-gradient(135deg, oklch(0.6 0.2 258) 0%, oklch(0.52 0.22 278) 100%);
+  --gradient-surface: linear-gradient(180deg, oklch(0.99 0.005 250) 0%, oklch(0.96 0.012 262) 100%);
+  --gradient-hero: radial-gradient(ellipse 80% 60% at 50% -10%, oklch(0.56 0.22 262 / 0.14), transparent 60%),
+                   radial-gradient(ellipse 60% 50% at 90% 20%, oklch(0.5 0.2 285 / 0.10), transparent 60%);
+}
+
+/* ============ DARK ============ */
+.dark {
   --background: oklch(0.1556 0.0222 242.23);
   --foreground: oklch(0.98 0.005 260);
 
@@ -120,9 +187,8 @@
   --meta: oklch(0.6 0.2 258);
   --google: oklch(0.72 0.17 145);
 
-  /* Softer, quieter borders */
-  --border: oklch(1 0 0 / 0.06);
-  --input: oklch(1 0 0 / 0.06);
+  --border: oklch(1 0 0 / 0.08);
+  --input: oklch(1 0 0 / 0.08);
   --ring: oklch(0.6 0.2 258);
 
   --chart-1: oklch(0.6 0.2 258);
@@ -137,72 +203,57 @@
   --sidebar-primary-foreground: oklch(0.12 0.02 250);
   --sidebar-accent: oklch(0.22 0.038 245);
   --sidebar-accent-foreground: oklch(0.98 0.005 260);
-  --sidebar-border: oklch(1 0 0 / 0.05);
+  --sidebar-border: oklch(1 0 0 / 0.06);
   --sidebar-ring: oklch(0.6 0.2 258);
 
-  /* Platform brand colors — official-ish */
-  --platform-meta: oklch(0.6 0.2 258);          /* Meta blue */
-  --platform-instagram: oklch(0.65 0.22 340);   /* IG magenta */
-  --platform-facebook: oklch(0.58 0.19 254);    /* FB blue */
-  --platform-google: oklch(0.72 0.17 145);      /* Google green */
-  --platform-ga4: oklch(0.75 0.17 55);          /* GA4 orange */
-  --platform-gtm: oklch(0.52 0.16 245);         /* GTM dark blue */
-  --platform-tiktok: oklch(0.28 0.02 220);      /* TikTok black */
-  --platform-searchconsole: oklch(0.6 0.16 155); /* Search Console green */
+  --shadow-glow-token: 0 0 0 1px oklch(0.55 0.22 250 / 0.15), 0 8px 40px -12px oklch(0.55 0.22 250 / 0.35);
+  --shadow-card-token: 0 1px 2px 0 oklch(0 0 0 / 0.25), 0 0 0 1px oklch(1 0 0 / 0.02) inset;
+  --shadow-elevated-token: 0 1px 0 0 oklch(1 0 0 / 0.04) inset, 0 12px 32px -12px oklch(0 0 0 / 0.5), 0 2px 4px -2px oklch(0 0 0 / 0.3);
+  --shadow-hover-token: 0 1px 0 0 oklch(1 0 0 / 0.06) inset, 0 20px 48px -16px oklch(0 0 0 / 0.55);
+
+  --gradient-surface: linear-gradient(180deg, oklch(0.19 0.025 250) 0%, oklch(0.14 0.02 245) 100%);
+  --gradient-hero: radial-gradient(ellipse 80% 60% at 50% -10%, oklch(0.55 0.22 250 / 0.2), transparent 60%),
+                   radial-gradient(ellipse 60% 50% at 90% 20%, oklch(0.5 0.2 285 / 0.14), transparent 60%);
 }
 
 @layer base {
-  * {
-    border-color: var(--color-border);
-  }
-
+  * { border-color: var(--color-border); }
   html {
     font-family: var(--font-sans);
     background-color: var(--color-background);
+    color: var(--color-foreground);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    color-scheme: light;
   }
-
+  html.dark { color-scheme: dark; }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     letter-spacing: -0.011em;
   }
-
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     letter-spacing: -0.022em;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
   }
-
-  /* Global smooth transitions on interactive surfaces */
   button, a {
     transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease,
       box-shadow 200ms ease, transform 200ms ease, opacity 160ms ease;
   }
 }
 
-@utility gradient-primary {
-  background-image: var(--gradient-primary);
-}
-
-@utility gradient-surface {
-  background-image: var(--gradient-surface);
-}
-
-@utility gradient-hero {
-  background-image: var(--gradient-hero);
-}
-
+@utility gradient-primary { background-image: var(--gradient-primary); }
+@utility gradient-surface { background-image: var(--gradient-surface); }
+@utility gradient-hero    { background-image: var(--gradient-hero); }
 @utility text-gradient {
   background-image: var(--gradient-primary);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
-
 @utility card-premium {
   background-color: var(--color-card);
   border-radius: var(--radius-xl);
