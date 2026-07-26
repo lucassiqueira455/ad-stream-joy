@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Logo } from "./logo";
+import { ThemeToggle } from "./theme-toggle";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { initialsFromName } from "@/lib/mock-data";
@@ -136,6 +137,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {displayEmail}
               </p>
             </div>
+            <ThemeToggle />
             <button
               type="button"
               onClick={() => signOut()}
