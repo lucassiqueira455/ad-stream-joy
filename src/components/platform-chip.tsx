@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BrandIcon } from "./brand-icon";
 
 export type PlatformKey =
   | "meta"
@@ -30,13 +31,10 @@ export function PlatformDot({ platform, connected }: { platform: PlatformKey; co
     <span
       title={`${p.label}${connected ? " — conectado" : " — não conectado"}`}
       aria-label={p.label}
-      className="grid h-5 w-5 place-items-center rounded-full text-[9px] font-semibold text-white/90"
-      style={{
-        backgroundColor: connected ? p.colorVar : "oklch(1 0 0 / 0.08)",
-        color: connected ? "white" : "oklch(1 0 0 / 0.35)",
-      }}
+      className="grid h-5 w-5 place-items-center rounded-full ring-1 ring-border bg-background/60"
+      style={{ opacity: connected ? 1 : 0.4 }}
     >
-      {p.initials}
+      <BrandIcon platform={platform} className="h-3.5 w-3.5" />
     </span>
   );
 }

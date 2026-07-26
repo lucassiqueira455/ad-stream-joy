@@ -57,13 +57,21 @@ function IntegrationsTab() {
   const availableGoogleAccounts = accounts.filter((a) => a.platform === "google" && !a.client_id);
 
   const redirectToOAuth = (url: string) => {
-    try {
-      if (window.top && window.top !== window.self) window.top.location.href = url;
-      else window.location.href = url;
-    } catch {
-      window.open(url, "_blank", "noopener,noreferrer");
+    // OAuth providers (Google, Facebook) block their consent pages inside iframes
+    // via X-Frame-Options. Opening a new tab is the only reliable path from the
+    // Lovable preview iframe or any embedded environment.
+    const w = window.open(url, "_blank", "noopener,noreferrer");
+    if (!w) {
+      // Popup blocked — fall back to top-level navigation.
+      try {
+        if (window.top && window.top !== window.self) window.top.location.href = url;
+        else window.location.href = url;
+      } catch {
+        window.location.href = url;
+      }
     }
   };
+
 
   const handleConnectMeta = async () => {
     setConnecting("meta");

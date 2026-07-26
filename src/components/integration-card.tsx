@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { PLATFORMS, type PlatformKey } from "./platform-chip";
+import { BrandIcon } from "./brand-icon";
 
 export function IntegrationCard({
   platform,
@@ -28,11 +29,8 @@ export function IntegrationCard({
 
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          <span
-            className="grid h-11 w-11 place-items-center rounded-xl text-sm font-semibold text-white"
-            style={{ backgroundColor: p.colorVar }}
-          >
-            {p.initials}
+          <span className="grid h-11 w-11 place-items-center rounded-xl bg-background/70 ring-1 ring-border">
+            <BrandIcon platform={platform} className="h-7 w-7" />
           </span>
           <div>
             <p className="text-base font-semibold tracking-tight">{p.label}</p>
@@ -41,6 +39,7 @@ export function IntegrationCard({
             )}
           </div>
         </div>
+
 
         <span
           className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
