@@ -8,7 +8,7 @@ import { lovable } from "@/integrations/lovable";
 export const Route = createFileRoute("/auth/signup")({
   head: () => ({
     meta: [
-      { title: "Criar conta — TráfegoLab" },
+      { title: "Criar conta — Analizze" },
       { name: "description", content: "Crie sua conta e comece a gerar relatórios de tráfego pago." },
     ],
   }),

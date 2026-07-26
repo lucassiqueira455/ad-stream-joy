@@ -13,7 +13,7 @@ import { Logo } from "@/components/logo";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "TráfegoLab — Relatórios de Meta Ads e Google Ads" },
+      { title: "Analizze — Relatórios de Meta Ads e Google Ads" },
       {
         name: "description",
         content:
@@ -233,7 +233,7 @@ function Landing() {
       </section>
 
       <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} TráfegoLab. Todos os direitos reservados.
+        © {new Date().getFullYear()} Analizze. Todos os direitos reservados.
       </footer>
     </div>
   );
