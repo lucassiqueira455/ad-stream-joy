@@ -31,8 +31,10 @@ export const Route = createFileRoute("/api/auth/google/callback")({
           });
 
           const me = await fetchGoogleUserInfo(token.access_token);
+          let importError: string | null = null;
           const customers = await fetchAllAccessibleCustomerDetails(token.access_token).catch((e) => {
             console.error("Google Ads listAccessible failed", e);
+            importError = e instanceof Error ? e.message : String(e);
             return [];
           });
 
@@ -79,7 +81,11 @@ export const Route = createFileRoute("/api/auth/google/callback")({
             if (accErr) console.error("Upsert google ad_accounts failed", accErr);
           }
 
-          return redirectWith(backTo, { google: "connected", count: String(customers.length) });
+          return redirectWith(backTo, {
+            google: importError ? "import_error" : "connected",
+            count: String(customers.length),
+            ...(importError ? { msg: (importError as string).slice(0, 200) } : {}),
+          });
         } catch (e) {
           console.error("Google callback error", e);
           return redirectWith(backTo, { google: "error" });
