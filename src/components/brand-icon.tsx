@@ -1,8 +1,9 @@
 import type { PlatformKey } from "./platform-chip";
 
 /**
- * Official-ish brand marks rendered as inline SVG so they scale and inherit sizing.
- * All logos are on a transparent background — the caller controls the tile color.
+ * Official brand marks rendered as inline SVG.
+ * Each icon fills its viewBox edge-to-edge so it sits flush inside a square tile.
+ * The caller controls sizing via `className` (width/height utilities).
  */
 export function BrandIcon({
   platform,
@@ -13,17 +14,19 @@ export function BrandIcon({
 }) {
   switch (platform) {
     case "meta":
+      // Meta's infinity/loop mark on a blue gradient tile.
       return (
-        <svg viewBox="0 0 36 36" className={className} aria-hidden>
+        <svg viewBox="0 0 48 48" className={className} aria-hidden>
           <defs>
-            <linearGradient id="metaG" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#0064E1" />
-              <stop offset="100%" stopColor="#0082FB" />
+            <linearGradient id="metaTile" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#0064E0" />
+              <stop offset="100%" stopColor="#00A2FF" />
             </linearGradient>
           </defs>
+          <rect width="48" height="48" rx="10" fill="url(#metaTile)" />
           <path
-            fill="url(#metaG)"
-            d="M18 6c-4.8 0-7.7 3.1-10.1 6.9C5.6 16.5 4 20.6 4 23.4c0 3.2 1.9 5.1 4.5 5.1 2.4 0 4.1-1.6 6.4-5 .8-1.2 1.4-2.3 1.4-2.3s-1.7-2.7-2.5-3.9c-1.4-2-2.5-3-3.9-3-1.5 0-2.6 1-3.4 2.3l-1.6-1.1c1.1-2 3-3.9 5.4-3.9 2.4 0 4 1.4 5.5 3.5 1.2 1.7 2.6 4 2.6 4s1.4-2.3 2.9-4.2c1.6-2.1 3.2-3.3 5.4-3.3 3.4 0 5.3 2.8 5.3 6.9 0 4.4-2.4 8.4-5.9 8.4-2.4 0-3.9-1.1-5.4-3.1L21 22.9c1.3 1.6 2.5 2.5 4 2.5 2 0 3.2-2.1 3.2-4.9 0-2.7-1-4.5-2.7-4.5-1.2 0-2.2.8-3.4 2.5-.6.8-1.4 2-1.4 2s.9 1.5 1.9 3c2.2 3.4 3.8 4.9 6.5 4.9 3.7 0 6-3 6-7.7 0-5.5-3.1-9.7-7.5-9.7-2.7 0-4.7 1.4-6.6 3.9C19.9 8.2 18.1 6 18 6z"
+            fill="#fff"
+            d="M12.7 30.9c0 2 .9 3.4 2.4 3.4 1.7 0 2.7-.8 4.7-4 0 0 1.3-2 2.2-3.6-1.5-2.4-2.7-4.2-3.4-5-1.6-1.9-2.9-2.8-4.3-2.8-3 0-5.2 3.7-5.2 8 0 2.6.8 4.9 2.3 6.4l1.6-1.6c-.6-.8-1-1.7-1-2.8 0-2.6 1.5-5.7 3.1-5.7 1.1 0 2 .6 3.1 2 .7.9 1.6 2.2 2.5 3.7l-1.1 1.7c-1.5 2.4-2.2 2.9-3.3 2.9-.7 0-1.3-.4-1.3-1.4 0-.6.1-1.2.2-1.7l-2 .4c-.3 1.1-.5 2.4-.5 3.2Zm10.2-4.2c1.4-2.3 3.3-5.3 3.3-5.3 1.4-2.2 2.4-3.1 3.7-3.1 1.5 0 2.7 1.1 3.7 3.3.9 2 1.4 4.4 1.4 6.7 0 4.1-1.8 5.4-3.4 5.4-1.3 0-2.3-.6-3.5-2.4l-1.4 2.1c1.4 1.9 2.9 3 5 3 3.4 0 5.7-2.9 5.7-8.2 0-5.3-2.6-10-6.2-10-2 0-3.6 1.1-5.1 3.1-1.1 1.4-2.4 3.5-3.4 5.2l-.5.8Z"
           />
         </svg>
       );
@@ -31,16 +34,18 @@ export function BrandIcon({
       return (
         <svg viewBox="0 0 48 48" className={className} aria-hidden>
           <defs>
-            <radialGradient id="igG" cx="30%" cy="107%" r="150%">
+            <radialGradient id="igTile" cx="30%" cy="107%" r="140%">
               <stop offset="0%" stopColor="#FFDD55" />
               <stop offset="10%" stopColor="#FFDD55" />
-              <stop offset="50%" stopColor="#FF543E" />
-              <stop offset="100%" stopColor="#C837AB" />
+              <stop offset="45%" stopColor="#FF543E" />
+              <stop offset="80%" stopColor="#C837AB" />
+              <stop offset="100%" stopColor="#7638FA" />
             </radialGradient>
           </defs>
-          <rect x="4" y="4" width="40" height="40" rx="12" fill="url(#igG)" />
-          <circle cx="24" cy="24" r="9" fill="none" stroke="#fff" strokeWidth="2.6" />
-          <circle cx="34.5" cy="13.5" r="2.2" fill="#fff" />
+          <rect width="48" height="48" rx="12" fill="url(#igTile)" />
+          <rect x="10" y="10" width="28" height="28" rx="8" fill="none" stroke="#fff" strokeWidth="2.6" />
+          <circle cx="24" cy="24" r="6.5" fill="none" stroke="#fff" strokeWidth="2.6" />
+          <circle cx="32.5" cy="15.5" r="1.9" fill="#fff" />
         </svg>
       );
     case "facebook":
@@ -49,41 +54,58 @@ export function BrandIcon({
           <rect width="48" height="48" rx="10" fill="#1877F2" />
           <path
             fill="#fff"
-            d="M28.5 25.6h4l.7-4.6h-4.7v-3c0-1.3.4-2.2 2.3-2.2h2.5V11.7c-.4-.1-1.9-.2-3.6-.2-3.6 0-6 2.2-6 6.2V21h-4v4.6h4V37h4.8V25.6z"
+            d="M31.5 30.9 32.6 24h-6.6v-4.5c0-1.9.9-3.7 3.9-3.7h3V10s-2.7-.5-5.3-.5c-5.4 0-9 3.3-9 9.2V24h-6v6.9h6V47.5c1.2.2 2.5.3 3.7.3s2.5-.1 3.7-.3V30.9h5.5Z"
           />
         </svg>
       );
     case "google":
+      // Google "G" filling a white tile with its four brand colors.
       return (
         <svg viewBox="0 0 48 48" className={className} aria-hidden>
-          <path fill="#FBBC04" d="M9.7 33.7 24 24l14.3 9.7L24 44z" />
-          <path fill="#34A853" d="M24 24 9.7 14.3 24 4l14.3 10.3z" />
-          <path fill="#4285F4" d="M24 24 38.3 14.3 44 24l-5.7 9.7z" />
-          <path fill="#EA4335" d="M24 24 9.7 33.7 4 24l5.7-9.7z" />
+          <rect width="48" height="48" rx="10" fill="#fff" />
+          <path
+            fill="#4285F4"
+            d="M39.6 24.4c0-1.1-.1-2.1-.3-3.1H24v6h8.8c-.4 2-1.6 3.7-3.3 4.9v4h5.3c3.1-2.9 4.8-7.1 4.8-11.8Z"
+          />
+          <path
+            fill="#34A853"
+            d="M24 40c4.3 0 8-1.4 10.7-3.9l-5.3-4c-1.5 1-3.3 1.6-5.4 1.6-4.2 0-7.7-2.8-8.9-6.6H9.7v4.1C12.4 36.6 17.8 40 24 40Z"
+          />
+          <path
+            fill="#FBBC04"
+            d="M15.1 27.1c-.3-.9-.5-1.9-.5-2.9s.2-2 .5-2.9v-4.1H9.7C8.6 19.3 8 21.6 8 24.2s.6 4.9 1.7 7l5.4-4.1Z"
+          />
+          <path
+            fill="#EA4335"
+            d="M24 15c2.4 0 4.5.8 6.2 2.4l4.6-4.6C31.9 10.2 28.2 8.6 24 8.6c-6.2 0-11.6 3.4-14.3 8.5l5.4 4.1c1.3-3.8 4.8-6.2 8.9-6.2Z"
+          />
         </svg>
       );
     case "ga4":
       return (
         <svg viewBox="0 0 48 48" className={className} aria-hidden>
-          <rect x="6" y="6" width="10" height="36" rx="5" fill="#F9AB00" />
-          <rect x="19" y="16" width="10" height="26" rx="5" fill="#E37400" />
-          <rect x="32" y="24" width="10" height="18" rx="5" fill="#E37400" />
+          <rect width="48" height="48" rx="10" fill="#fff" />
+          <rect x="30" y="8" width="10" height="32" rx="5" fill="#F9AB00" />
+          <rect x="19" y="18" width="10" height="22" rx="5" fill="#E37400" />
+          <circle cx="13" cy="35" r="5" fill="#E37400" />
         </svg>
       );
     case "gtm":
       return (
         <svg viewBox="0 0 48 48" className={className} aria-hidden>
-          <path fill="#8AB4F8" d="M28.6 40.6 8.2 20.2l7-7 20.5 20.4z" />
-          <path fill="#4285F4" d="M28.7 7.4 41 19.6 20.6 40 8.4 27.6z" />
-          <circle cx="15" cy="35" r="4.5" fill="#246FDB" />
+          <rect width="48" height="48" rx="10" fill="#fff" />
+          <path fill="#8AB4F8" d="M27.7 42 6 20.3l6.6-6.6L34.4 35.4z" />
+          <path fill="#4285F4" d="M27.8 6 42 20.2 22 40 7.7 25.8z" />
+          <circle cx="14.4" cy="36" r="4.4" fill="#246FDB" />
         </svg>
       );
     case "searchconsole":
       return (
         <svg viewBox="0 0 48 48" className={className} aria-hidden>
-          <circle cx="20" cy="20" r="12" fill="none" stroke="#4285F4" strokeWidth="4" />
-          <path stroke="#34A853" strokeWidth="4" strokeLinecap="round" d="m30 30 10 10" />
-          <circle cx="20" cy="20" r="5" fill="#FBBC04" />
+          <rect width="48" height="48" rx="10" fill="#fff" />
+          <circle cx="20" cy="20" r="11" fill="none" stroke="#4285F4" strokeWidth="4" />
+          <circle cx="20" cy="20" r="4.5" fill="#FBBC04" />
+          <path stroke="#34A853" strokeWidth="4.5" strokeLinecap="round" d="m29 29 10 10" />
         </svg>
       );
     case "tiktok":
@@ -92,16 +114,15 @@ export function BrandIcon({
           <rect width="48" height="48" rx="10" fill="#010101" />
           <path
             fill="#25F4EE"
-            d="M31 12h-4.5v20a4.5 4.5 0 1 1-4.5-4.5v-4.6a9 9 0 1 0 9 9V19.9a11 11 0 0 0 6.5 2.1v-4.5A6.6 6.6 0 0 1 31 12z"
+            d="M32.4 12h-4.9v20.6a4.6 4.6 0 1 1-4.6-4.6c.5 0 .9.1 1.4.2v-5a9.6 9.6 0 0 0-1.4-.1 9.6 9.6 0 1 0 9.6 9.6V20.4a11.3 11.3 0 0 0 6.6 2.1v-4.9a6.7 6.7 0 0 1-6.7-5.6Z"
           />
           <path
             fill="#FE2C55"
-            transform="translate(1.5 1.5)"
-            d="M31 12h-4.5v20a4.5 4.5 0 1 1-4.5-4.5v-4.6a9 9 0 1 0 9 9V19.9a11 11 0 0 0 6.5 2.1v-4.5A6.6 6.6 0 0 1 31 12z"
+            d="M34 13.5h-4.9v20.6a4.6 4.6 0 1 1-4.6-4.6c.5 0 .9.1 1.4.2v-5a9.6 9.6 0 0 0-1.4-.1 9.6 9.6 0 1 0 9.6 9.6V21.9a11.3 11.3 0 0 0 6.6 2.1V19a6.7 6.7 0 0 1-6.7-5.5Z"
           />
           <path
             fill="#fff"
-            d="M30 11h-4.5v20a4.5 4.5 0 1 1-4.5-4.5v-4.6a9 9 0 1 0 9 9V18.9a11 11 0 0 0 6.5 2.1v-4.5A6.6 6.6 0 0 1 30 11z"
+            d="M33.2 12.8h-4.9v20.6a4.6 4.6 0 1 1-4.6-4.6c.5 0 .9.1 1.4.2v-5a9.6 9.6 0 0 0-1.4-.1 9.6 9.6 0 1 0 9.6 9.6V21.2a11.3 11.3 0 0 0 6.6 2.1v-4.9a6.7 6.7 0 0 1-6.7-5.6Z"
           />
         </svg>
       );
