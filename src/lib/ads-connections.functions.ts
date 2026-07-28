@@ -1,24 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-function getOrigin(): string {
-  const req = getRequest();
-  const url = new URL(req.url);
-  // Prefer forwarded host in case of proxying
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? url.host;
-  const proto = req.headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "");
-  return `${proto}://${host}`;
-}
 
 // Build Meta OAuth URL for the current user. Client redirects to the returned URL.
 export const startMetaOAuth = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { getRequestOrigin } = await import("./request-origin.server");
     const { buildMetaAuthUrl } = await import("./meta.server");
     const { signState } = await import("./crypto.server");
-    const redirectUri = `${getOrigin()}/api/auth/meta/callback`;
+    const redirectUri = `${getRequestOrigin()}/api/auth/meta/callback`;
     const state = signState({ uid: context.userId, redirectUri, platform: "meta" });
     return { url: buildMetaAuthUrl({ redirectUri, state }) };
   });
@@ -26,11 +17,15 @@ export const startMetaOAuth = createServerFn({ method: "POST" })
 // Build Google Ads OAuth URL.
 export const startGoogleOAuth = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((input) =>
+    z.object({ clientId: z.string().uuid().optional() }).optional().parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { getRequestOrigin } = await import("./request-origin.server");
     const { buildGoogleAuthUrl } = await import("./google.server");
     const { signState } = await import("./crypto.server");
-    const redirectUri = `${getOrigin()}/api/auth/google/callback`;
-    const state = signState({ uid: context.userId, redirectUri, platform: "google" });
+    const redirectUri = `${getRequestOrigin()}/api/auth/google/callback`;
+    const state = signState({ uid: context.userId, redirectUri, platform: "google", clientId: data?.clientId });
     return { url: buildGoogleAuthUrl({ redirectUri, state }) };
   });
 

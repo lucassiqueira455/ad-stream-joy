@@ -4,9 +4,18 @@
 export const GOOGLE_ADS_SCOPES = ["https://www.googleapis.com/auth/adwords"];
 const GOOGLE_ADS_API = "https://googleads.googleapis.com/v21";
 
+function getGoogleAdsOAuthConfig(): { clientId: string; clientSecret: string } {
+  const clientId = process.env.GOOGLE_ADS_CLIENT_ID ?? process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET ?? process.env.GOOGLE_CLIENT_SECRET;
+
+  if (!clientId) throw new Error("GOOGLE_ADS_CLIENT_ID/GOOGLE_CLIENT_ID is not configured");
+  if (!clientSecret) throw new Error("GOOGLE_ADS_CLIENT_SECRET/GOOGLE_CLIENT_SECRET is not configured");
+
+  return { clientId, clientSecret };
+}
+
 export function buildGoogleAuthUrl(params: { redirectUri: string; state: string }): string {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  if (!clientId) throw new Error("GOOGLE_CLIENT_ID is not configured");
+  const { clientId } = getGoogleAdsOAuthConfig();
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", clientId);
   url.searchParams.set("redirect_uri", params.redirectUri);
@@ -32,8 +41,7 @@ export async function exchangeGoogleCode(params: {
   code: string;
   redirectUri: string;
 }): Promise<GoogleTokenResponse> {
-  const clientId = process.env.GOOGLE_CLIENT_ID!;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
+  const { clientId, clientSecret } = getGoogleAdsOAuthConfig();
   const body = new URLSearchParams({
     code: params.code,
     client_id: clientId,
@@ -51,8 +59,7 @@ export async function exchangeGoogleCode(params: {
 }
 
 export async function refreshGoogleAccessToken(refreshToken: string): Promise<GoogleTokenResponse> {
-  const clientId = process.env.GOOGLE_CLIENT_ID!;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
+  const { clientId, clientSecret } = getGoogleAdsOAuthConfig();
   const body = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,

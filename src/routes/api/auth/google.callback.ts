@@ -9,10 +9,10 @@ export const Route = createFileRoute("/api/auth/google/callback")({
         const state = url.searchParams.get("state");
         const errorParam = url.searchParams.get("error");
 
-        const backTo = "/app/clients";
+        const defaultBackTo = "/app/clients";
 
-        if (errorParam) return redirectWith(backTo, { google: "denied" });
-        if (!code || !state) return redirectWith(backTo, { google: "missing_params" });
+        if (errorParam) return redirectWith(defaultBackTo, { google: "denied" });
+        if (!code || !state) return redirectWith(defaultBackTo, { google: "missing_params" });
 
         try {
           const { verifyState, encryptToken } = await import("@/lib/crypto.server");
@@ -24,6 +24,9 @@ export const Route = createFileRoute("/api/auth/google/callback")({
           } = await import("@/lib/google.server");
 
           const payload = verifyState<{ uid: string; redirectUri: string; clientId?: string }>(state);
+          const backTo = payload.clientId
+            ? `/app/clients/${payload.clientId}/integrations`
+            : defaultBackTo;
 
           const token = await exchangeGoogleCode({
             code,
@@ -88,7 +91,7 @@ export const Route = createFileRoute("/api/auth/google/callback")({
           });
         } catch (e) {
           console.error("Google callback error", e);
-          return redirectWith(backTo, { google: "error" });
+          return redirectWith(defaultBackTo, { google: "error" });
         }
       },
     },
