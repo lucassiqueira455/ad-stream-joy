@@ -31,10 +31,10 @@ export function PlatformDot({ platform, connected }: { platform: PlatformKey; co
     <span
       title={`${p.label}${connected ? " — conectado" : " — não conectado"}`}
       aria-label={p.label}
-      className="grid h-5 w-5 place-items-center rounded-full ring-1 ring-border bg-background/60"
+      className="grid h-5 w-5 place-items-center overflow-hidden rounded-md ring-1 ring-border bg-background/60"
       style={{ opacity: connected ? 1 : 0.4 }}
     >
-      <BrandIcon platform={platform} className="h-3.5 w-3.5" />
+      <BrandIcon platform={platform} className="h-full w-full" />
     </span>
   );
 }

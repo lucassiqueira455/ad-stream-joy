@@ -62,6 +62,27 @@ function IntegrationsTab() {
     // redirect (breaking out of the Lovable preview iframe when needed) so the
     // browser lands directly on accounts.google.com / facebook.com.
     try {
+      const topTarget = window.top && window.top !== window.self ? window.top : window;
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.target = "_top";
+      anchor.rel = "noreferrer";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => {
+        try {
+          window.open(url, "_blank", "noopener,noreferrer");
+        } catch {
+          window.location.href = url;
+        }
+      }, 700);
+      topTarget.location.href = url;
+      return;
+    } catch {
+      // Cross-origin top access denied — fall through to same-window redirect.
+    }
+    try {
       if (window.top && window.top !== window.self) {
         window.top.location.href = url;
         return;
@@ -87,7 +108,7 @@ function IntegrationsTab() {
   const handleConnectGoogle = async () => {
     setConnecting("google");
     try {
-      const res = await startGoogle();
+      const res = await startGoogle({ data: { clientId } });
       redirectToOAuth(res.url);
     } catch (e) {
       console.error(e);

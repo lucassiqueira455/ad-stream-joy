@@ -29,8 +29,8 @@ export function IntegrationCard({
 
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-background/70 ring-1 ring-border">
-            <BrandIcon platform={platform} className="h-7 w-7" />
+          <span className="grid h-11 w-11 place-items-center overflow-hidden rounded-xl bg-background ring-1 ring-border">
+            <BrandIcon platform={platform} className="h-full w-full" />
           </span>
           <div>
             <p className="text-base font-semibold tracking-tight">{p.label}</p>

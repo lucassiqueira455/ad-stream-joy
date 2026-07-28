@@ -26,11 +26,14 @@ export const startMetaOAuth = createServerFn({ method: "POST" })
 // Build Google Ads OAuth URL.
 export const startGoogleOAuth = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((input) =>
+    z.object({ clientId: z.string().uuid().optional() }).optional().parse(input),
+  )
+  .handler(async ({ data, context }) => {
     const { buildGoogleAuthUrl } = await import("./google.server");
     const { signState } = await import("./crypto.server");
     const redirectUri = `${getOrigin()}/api/auth/google/callback`;
-    const state = signState({ uid: context.userId, redirectUri, platform: "google" });
+    const state = signState({ uid: context.userId, redirectUri, platform: "google", clientId: data?.clientId });
     return { url: buildGoogleAuthUrl({ redirectUri, state }) };
   });
 
