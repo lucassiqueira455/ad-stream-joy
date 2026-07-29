@@ -7,46 +7,50 @@ export function MetricCard({
   delta,
   icon: Icon,
   hint,
+  accent = "hsl(var(--primary))",
 }: {
   label: string;
   value: ReactNode;
   delta?: number;
   icon: LucideIcon;
   hint?: string;
+  accent?: string;
 }) {
   const positive = (delta ?? 0) >= 0;
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 shadow-card transition-colors hover:border-primary/40">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            {label}
-          </p>
-          <p className="mt-2 font-display text-2xl font-semibold tabular-nums">
+    <div className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 transition-all hover:border-border hover:shadow-[0_1px_2px_0_rgb(0_0_0/0.04),0_4px_16px_-2px_rgb(0_0_0/0.06)]">
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-[2px]"
+        style={{ background: accent }}
+      />
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 space-y-3">
+          <div className="flex items-center gap-2">
+            <Icon className="h-3.5 w-3.5" style={{ color: accent }} strokeWidth={2.25} />
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground/80">
+              {label}
+            </p>
+          </div>
+          <p className="font-display text-3xl font-semibold tracking-tight tabular-nums">
             {value}
           </p>
           {hint ? (
-            <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+            <p className="text-xs text-muted-foreground">{hint}</p>
           ) : null}
-        </div>
-        <div className="grid h-9 w-9 place-items-center rounded-lg bg-accent text-primary">
-          <Icon className="h-4 w-4" />
         </div>
       </div>
       {delta !== undefined ? (
-        <div
-          className={`mt-4 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-            positive
-              ? "bg-success/10 text-success"
-              : "bg-destructive/10 text-destructive"
-          }`}
-        >
+        <div className="mt-4 inline-flex items-center gap-1 text-xs font-medium">
           {positive ? (
-            <ArrowUpRight className="h-3 w-3" />
+            <ArrowUpRight className="h-3.5 w-3.5 text-success" />
           ) : (
-            <ArrowDownRight className="h-3 w-3" />
+            <ArrowDownRight className="h-3.5 w-3.5 text-destructive" />
           )}
-          {Math.abs(delta).toFixed(1)}% vs. período anterior
+          <span className={positive ? "text-success" : "text-destructive"}>
+            {Math.abs(delta).toFixed(1)}%
+          </span>
+          <span className="text-muted-foreground">vs. período anterior</span>
         </div>
       ) : null}
     </div>

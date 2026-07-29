@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { getClientDashboard } from "@/lib/ads-connections.functions";
 import { getPublicDashboard } from "@/lib/shares.functions";
+import { PlatformSelector, type PlatformFilter } from "@/components/platform-selector";
 
 type DatePreset =
   | "today" | "yesterday" | "last_3d" | "last_7d" | "last_14d"
@@ -377,6 +378,7 @@ export function ClientDashboardView({
   clientId: string; hasAccounts: boolean; publicToken?: string; allowDateChange?: boolean;
 }) {
   const [datePreset, setDatePreset] = useState<DatePreset>("last_30d");
+  const [platform, setPlatform] = useState<PlatformFilter>("all");
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30_000);
@@ -387,13 +389,13 @@ export function ClientDashboardView({
   const fetchPublic = useServerFn(getPublicDashboard);
 
   const query = useQuery({
-    queryKey: ["client-dashboard", clientId, datePreset, publicToken ?? "auth"],
+    queryKey: ["client-dashboard", clientId, datePreset, platform, publicToken ?? "auth"],
     queryFn: async () => {
       if (publicToken) {
-        const r = await fetchPublic({ data: { token: publicToken, datePreset } });
+        const r = await fetchPublic({ data: { token: publicToken, datePreset, platform } });
         return r.dashboard;
       }
-      return fetchAuth({ data: { clientId, datePreset } });
+      return fetchAuth({ data: { clientId, datePreset, platform } });
     },
     enabled: hasAccounts,
     staleTime: 0,
@@ -478,6 +480,11 @@ export function ClientDashboardView({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <PlatformSelector
+            value={platform}
+            onChange={setPlatform}
+            connectedPlatforms={(data as { connectedPlatforms?: string[] } | undefined)?.connectedPlatforms}
+          />
           {allowDateChange && (
             <select value={datePreset} onChange={(e) => setDatePreset(e.target.value as DatePreset)} className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
               {DATE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}

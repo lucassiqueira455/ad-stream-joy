@@ -105,12 +105,15 @@ export const setShareAllowDateChange = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const PLATFORM_SCHEMA = z.enum(["all", "meta", "google"]).default("all");
+
 // Public: report data by token.
 export const getPublicReport = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z.object({
       token: z.string().min(20).max(200),
       datePreset: z.enum(DATE_PRESETS).optional(),
+      platform: PLATFORM_SCHEMA,
     }).parse(input),
   )
   .handler(async ({ data }) => {
@@ -130,7 +133,7 @@ export const getPublicReport = createServerFn({ method: "POST" })
 
     const effectivePreset = data.datePreset ?? "last_30d";
     const { computeClientMetrics } = await import("./metrics.server");
-    const metrics = await computeClientMetrics(supabaseAdmin, share.client_id, effectivePreset);
+    const metrics = await computeClientMetrics(supabaseAdmin, share.client_id, effectivePreset, data.platform);
 
     return { client, allowDateChange: true, datePreset: effectivePreset, metrics };
   });
@@ -141,6 +144,7 @@ export const getPublicDashboard = createServerFn({ method: "POST" })
     z.object({
       token: z.string().min(20).max(200),
       datePreset: z.enum(DATE_PRESETS).optional(),
+      platform: PLATFORM_SCHEMA,
     }).parse(input),
   )
   .handler(async ({ data }) => {
@@ -160,7 +164,7 @@ export const getPublicDashboard = createServerFn({ method: "POST" })
 
     const effectivePreset = data.datePreset ?? "last_30d";
     const { computeClientDashboard } = await import("./metrics.server");
-    const dashboard = await computeClientDashboard(supabaseAdmin, share.client_id, effectivePreset);
+    const dashboard = await computeClientDashboard(supabaseAdmin, share.client_id, effectivePreset, data.platform);
 
     return { client, allowDateChange: true, datePreset: effectivePreset, dashboard };
   });

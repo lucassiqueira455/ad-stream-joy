@@ -1,57 +1,101 @@
 // Shared aggregation logic for client metrics. Server-only.
-// Used both by the authenticated dashboard and the public share endpoint.
+// Supports multiple ad platforms (Meta Ads, Google Ads) with unified shape.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { decryptToken } from "./crypto.server";
-import { fetchAdAccountInsights, fetchAdAccountCampaigns } from "./meta.server";
-
+import {
+  fetchAdAccountInsights,
+  fetchAdAccountCampaigns,
+  fetchAdAccountDaily,
+  fetchAdAccountAds,
+  previousRangeForPreset,
+  type MetaInsights,
+  type CampaignRow,
+  type AdRow,
+  type DailyPoint,
+} from "./meta.server";
+import {
+  fetchGoogleAdsInsights,
+  fetchGoogleAdsCampaigns,
+  fetchGoogleAdsDaily,
+  fetchGoogleAdsAds,
+  getFreshGoogleToken,
+} from "./google-ads.server";
 
 export type DatePreset =
   | "today" | "yesterday" | "last_3d" | "last_7d" | "last_14d"
   | "last_28d" | "last_30d" | "last_90d" | "this_month" | "last_month";
 
+export type PlatformFilter = "all" | "meta" | "google";
+
+type AccountRow = {
+  id: string;
+  platform: string;
+  external_account_id: string;
+  account_name: string;
+  currency: string | null;
+  connection_id: string;
+  client_id?: string | null;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function computeClientMetrics(supabase: SupabaseClient<any>, clientId: string, datePreset: DatePreset) {
-  const { data: accounts, error } = await supabase
+async function fetchInsightsForAccount(supabase: SupabaseClient<any>, a: AccountRow, tokenMap: Map<string, string>, datePreset: DatePreset): Promise<{ insights: MetaInsights | null; campaigns: CampaignRow[]; error: string | null }> {
+  try {
+    if (a.platform === "meta") {
+      const token = tokenMap.get(a.connection_id);
+      if (!token) return { insights: null, campaigns: [], error: "Token não encontrado" };
+      const [insights, campaigns] = await Promise.all([
+        fetchAdAccountInsights({ token, externalAccountId: a.external_account_id, datePreset }),
+        fetchAdAccountCampaigns({ token, externalAccountId: a.external_account_id, datePreset }).catch(() => [] as CampaignRow[]),
+      ]);
+      return { insights, campaigns, error: null };
+    }
+    if (a.platform === "google") {
+      const accessToken = await getFreshGoogleToken(supabase, a.connection_id);
+      if (!accessToken) return { insights: null, campaigns: [], error: "Token não encontrado" };
+      const [insights, campaigns] = await Promise.all([
+        fetchGoogleAdsInsights({ accessToken, customerId: a.external_account_id, datePreset }),
+        fetchGoogleAdsCampaigns({ accessToken, customerId: a.external_account_id, datePreset }).catch(() => [] as CampaignRow[]),
+      ]);
+      return { insights, campaigns, error: null };
+    }
+    return { insights: null, campaigns: [], error: "Plataforma ainda não suportada" };
+  } catch (e) {
+    return { insights: null, campaigns: [], error: e instanceof Error ? e.message : "Erro" };
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function computeClientMetrics(supabase: SupabaseClient<any>, clientId: string, datePreset: DatePreset, platform: PlatformFilter = "all") {
+  let q = supabase
     .from("ad_accounts")
     .select("id, platform, external_account_id, account_name, currency, connection_id")
     .eq("client_id", clientId);
+  if (platform !== "all") q = q.eq("platform", platform);
+  const { data: accounts, error } = await q;
   if (error) throw error;
+  const connectedPlatforms = await listConnectedPlatforms(supabase, clientId);
   if (!accounts || accounts.length === 0) {
-    return { accounts: [], totals: null, currency: null };
+    return { accounts: [], totals: null, currency: null, campaigns: [] as CampaignRow[], platform, connectedPlatforms };
   }
 
   const connectionIds = [...new Set(accounts.map((a) => a.connection_id))];
-  const { data: conns, error: cErr } = await supabase
+  const { data: conns } = await supabase
     .from("ad_platform_connections")
     .select("id, access_token_encrypted, platform")
     .in("id", connectionIds);
-  if (cErr) throw cErr;
-  const tokenMap = new Map(conns?.map((c) => [c.id, decryptToken(c.access_token_encrypted)]));
+  const tokenMap = new Map(conns?.map((c) => [c.id, decryptToken(c.access_token_encrypted)]) ?? []);
 
   const campaignsAll: CampaignRow[] = [];
   const results = await Promise.all(
     accounts.map(async (a) => {
-      try {
-        if (a.platform !== "meta") {
-          return { account: a, insights: null, error: "Plataforma ainda não suportada" };
-        }
-        const token = tokenMap.get(a.connection_id);
-        if (!token) return { account: a, insights: null, error: "Token não encontrado" };
-        const [insights, campaigns] = await Promise.all([
-          fetchAdAccountInsights({ token, externalAccountId: a.external_account_id, datePreset }),
-          fetchAdAccountCampaigns({ token, externalAccountId: a.external_account_id, datePreset }).catch(() => [] as CampaignRow[]),
-        ]);
-        campaignsAll.push(...campaigns);
-        return { account: a, insights, error: null };
-      } catch (e) {
-        return { account: a, insights: null, error: e instanceof Error ? e.message : "Erro" };
-      }
+      const r = await fetchInsightsForAccount(supabase, a as AccountRow, tokenMap, datePreset);
+      campaignsAll.push(...r.campaigns);
+      return { account: a, insights: r.insights, error: r.error };
     }),
   );
 
-
   const withInsights = results.filter((r) => r.insights);
-  let totals = null as null | Awaited<ReturnType<typeof fetchAdAccountInsights>>;
+  let totals: MetaInsights | null = null;
   if (withInsights.length > 0) {
     const s = {
       spend: 0, impressions: 0, reach: 0, clicks: 0, link_clicks: 0,
@@ -85,7 +129,7 @@ export async function computeClientMetrics(supabase: SupabaseClient<any>, client
         breakdown[k] = (breakdown[k] ?? 0) + v;
       }
     }
-    const conversions = Object.values(breakdown).reduce((sum, v) => sum + v, 0);
+    const conversions = Object.values(breakdown).reduce((sum, v) => sum + v, 0) || withInsights.reduce((sum, r) => sum + (r.insights?.conversions ?? 0), 0);
     totals = {
       spend: s.spend,
       impressions: s.impressions,
@@ -129,17 +173,23 @@ export async function computeClientMetrics(supabase: SupabaseClient<any>, client
     totals,
     currency: accounts[0].currency ?? null,
     campaigns,
+    platform,
+    connectedPlatforms,
   };
 }
 
-
-// ============= Dashboard aggregation =============
-
-import type { CampaignRow, AdRow, DailyPoint } from "./meta.server";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function listConnectedPlatforms(supabase: SupabaseClient<any>, clientId: string): Promise<string[]> {
+  const { data } = await supabase
+    .from("ad_accounts")
+    .select("platform")
+    .eq("client_id", clientId);
+  return [...new Set((data ?? []).map((r) => r.platform))];
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function computeClientDashboard(supabase: SupabaseClient<any>, clientId: string, datePreset: DatePreset) {
-  const base = await computeClientMetrics(supabase, clientId, datePreset);
+export async function computeClientDashboard(supabase: SupabaseClient<any>, clientId: string, datePreset: DatePreset, platform: PlatformFilter = "all") {
+  const base = await computeClientMetrics(supabase, clientId, datePreset, platform);
   if (!base.totals || base.accounts.length === 0) {
     return {
       ...base,
@@ -151,64 +201,58 @@ export async function computeClientDashboard(supabase: SupabaseClient<any>, clie
     };
   }
 
-  const { fetchAdAccountDaily, fetchAdAccountCampaigns, fetchAdAccountAds, fetchAdAccountInsights, previousRangeForPreset } = await import("./meta.server");
-
   const connectionIds = [...new Set(base.accounts.map((r) => r.account.connection_id))];
   const { data: conns } = await supabase
     .from("ad_platform_connections")
     .select("id, access_token_encrypted")
     .in("id", connectionIds);
-  const tokenMap = new Map(conns?.map((c) => [c.id, decryptToken(c.access_token_encrypted)]));
+  const tokenMap = new Map(conns?.map((c) => [c.id, decryptToken(c.access_token_encrypted)]) ?? []);
 
   const daily: Record<string, DailyPoint> = {};
   const ads: AdRow[] = [];
   const prevRange = previousRangeForPreset(datePreset);
-  const prevInsightsList: Awaited<ReturnType<typeof fetchAdAccountInsights>>[] = [];
+  const prevInsightsList: MetaInsights[] = [];
 
   await Promise.all(
     base.accounts.map(async (r) => {
-      if (!r.insights || r.account.platform !== "meta") return;
-      const token = tokenMap.get(r.account.connection_id);
-      if (!token) return;
+      if (!r.insights) return;
+      const acct = r.account as AccountRow;
+
+      const campaignMeta = new Map<string, { objective: string | null; optimization_goal: string | null; destination_type: string | null }>();
+      for (const c of base.campaigns) {
+        campaignMeta.set(c.campaign_id, {
+          objective: c.objective, optimization_goal: c.optimization_goal, destination_type: c.destination_type,
+        });
+      }
+
       try {
-        // Build a campaign→objective map from base.campaigns for this account's campaigns
-        // (base.campaigns is already the combined list from all accounts, but campaign_id is unique)
-        const campaignMeta = new Map<string, { objective: string | null; optimization_goal: string | null; destination_type: string | null }>();
-        for (const c of base.campaigns) {
-          campaignMeta.set(c.campaign_id, {
-            objective: c.objective,
-            optimization_goal: c.optimization_goal,
-            destination_type: c.destination_type,
-          });
+        if (acct.platform === "meta") {
+          const token = tokenMap.get(acct.connection_id);
+          if (!token) return;
+          const [d, a, prev] = await Promise.all([
+            fetchAdAccountDaily({ token, externalAccountId: acct.external_account_id, datePreset }),
+            fetchAdAccountAds({ token, externalAccountId: acct.external_account_id, datePreset, campaignMeta }),
+            prevRange
+              ? fetchAdAccountInsights({ token, externalAccountId: acct.external_account_id, timeRange: prevRange }).catch(() => null)
+              : Promise.resolve(null),
+          ]);
+          mergeDaily(daily, d);
+          ads.push(...a);
+          if (prev) prevInsightsList.push(prev);
+        } else if (acct.platform === "google") {
+          const accessToken = await getFreshGoogleToken(supabase, acct.connection_id);
+          if (!accessToken) return;
+          const [d, a] = await Promise.all([
+            fetchGoogleAdsDaily({ accessToken, customerId: acct.external_account_id, datePreset }),
+            fetchGoogleAdsAds({ accessToken, customerId: acct.external_account_id, datePreset }),
+          ]);
+          mergeDaily(daily, d);
+          ads.push(...a);
         }
-        const [d, a, prev] = await Promise.all([
-          fetchAdAccountDaily({ token, externalAccountId: r.account.external_account_id, datePreset }),
-          fetchAdAccountAds({ token, externalAccountId: r.account.external_account_id, datePreset, campaignMeta }),
-          prevRange
-            ? fetchAdAccountInsights({ token, externalAccountId: r.account.external_account_id, timeRange: prevRange }).catch(() => null)
-            : Promise.resolve(null),
-        ]);
-        for (const p of d) {
-          const cur = daily[p.date];
-          if (!cur) {
-            daily[p.date] = { ...p };
-          } else {
-            cur.spend += p.spend;
-            cur.impressions += p.impressions;
-            cur.clicks += p.clicks;
-            cur.conversions += p.conversions;
-            cur.ctr = cur.impressions > 0 ? (cur.clicks / cur.impressions) * 100 : 0;
-            cur.cpc = cur.clicks > 0 ? cur.spend / cur.clicks : 0;
-          }
-        }
-        ads.push(...a);
-        if (prev) prevInsightsList.push(prev);
       } catch { /* per-account failure — skip */ }
     }),
-
   );
 
-  // Aggregate previous totals across accounts (subset of fields for deltas).
   let previousTotals: typeof base.totals | null = null;
   if (prevInsightsList.length > 0) {
     const s = {
@@ -216,31 +260,23 @@ export async function computeClientDashboard(supabase: SupabaseClient<any>, clie
       conversions: 0, profile_visits: 0, conv_cost_total: 0, pv_cost_total: 0,
     };
     for (const i of prevInsightsList) {
-      s.spend += i.spend;
-      s.impressions += i.impressions;
-      s.reach += i.reach;
-      s.clicks += i.clicks;
-      s.link_clicks += i.link_clicks;
-      s.conversions += i.conversions;
-      s.profile_visits += i.profile_visits;
+      s.spend += i.spend; s.impressions += i.impressions; s.reach += i.reach;
+      s.clicks += i.clicks; s.link_clicks += i.link_clicks;
+      s.conversions += i.conversions; s.profile_visits += i.profile_visits;
       s.conv_cost_total += i.cost_per_conversion * i.conversions;
       s.pv_cost_total += i.cost_per_profile_visit * i.profile_visits;
     }
     previousTotals = {
       ...base.totals,
-      spend: s.spend,
-      impressions: s.impressions,
-      reach: s.reach,
+      spend: s.spend, impressions: s.impressions, reach: s.reach,
       frequency: s.reach > 0 ? s.impressions / s.reach : 0,
       cpm: s.impressions > 0 ? (s.spend / s.impressions) * 1000 : 0,
-      clicks: s.clicks,
-      link_clicks: s.link_clicks,
+      clicks: s.clicks, link_clicks: s.link_clicks,
       cpc: s.clicks > 0 ? s.spend / s.clicks : 0,
       cpc_link: s.link_clicks > 0 ? s.spend / s.link_clicks : 0,
       ctr: s.impressions > 0 ? (s.clicks / s.impressions) * 100 : 0,
       ctr_link: s.impressions > 0 ? (s.link_clicks / s.impressions) * 100 : 0,
-      conversions: s.conversions,
-      results: s.conversions,
+      conversions: s.conversions, results: s.conversions,
       cost_per_conversion: s.conversions > 0 ? s.conv_cost_total / s.conversions : 0,
       cost_per_result: s.conversions > 0 ? s.conv_cost_total / s.conversions : 0,
       profile_visits: s.profile_visits,
@@ -250,15 +286,25 @@ export async function computeClientDashboard(supabase: SupabaseClient<any>, clie
 
   const series = Object.values(daily).sort((a, b) => a.date.localeCompare(b.date));
   const topCampaigns = base.campaigns.slice(0, 20);
-
   const topAds = ads
     .filter((a) => a.spend > 0 || a.conversions > 0 || a.profile_visits > 0)
     .sort((a, b) => ((b.conversions + b.profile_visits) - (a.conversions + a.profile_visits)) || (b.spend - a.spend))
     .slice(0, 20);
 
-
   return { ...base, series, topCampaigns, topAds, previousTotals, lastSyncedAt: Date.now() };
 }
 
-
-
+function mergeDaily(target: Record<string, DailyPoint>, incoming: DailyPoint[]) {
+  for (const p of incoming) {
+    const cur = target[p.date];
+    if (!cur) target[p.date] = { ...p };
+    else {
+      cur.spend += p.spend;
+      cur.impressions += p.impressions;
+      cur.clicks += p.clicks;
+      cur.conversions += p.conversions;
+      cur.ctr = cur.impressions > 0 ? (cur.clicks / cur.impressions) * 100 : 0;
+      cur.cpc = cur.clicks > 0 ? cur.spend / cur.clicks : 0;
+    }
+  }
+}
