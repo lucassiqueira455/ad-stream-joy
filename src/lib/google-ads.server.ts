@@ -26,12 +26,6 @@ function headers(accessToken: string, loginCustomerId?: string): Record<string, 
 
 // ============= Token freshness =============
 
-export interface GoogleTokens {
-  accessToken: string;
-  refreshToken: string | null;
-  expiresAt: string | null;
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getFreshGoogleToken(supabase: SupabaseClient<any>, connectionId: string): Promise<string | null> {
   const { data: conn } = await supabase
