@@ -229,6 +229,11 @@ export function ClientMetrics({ clientId, hasAccounts, publicToken, allowDateCha
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <PlatformSelector
+            value={platform}
+            onChange={setPlatform}
+            connectedPlatforms={query.data?.connectedPlatforms}
+          />
           {allowDateChange && (
             <select
               value={datePreset}
