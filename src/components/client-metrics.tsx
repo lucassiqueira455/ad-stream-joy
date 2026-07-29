@@ -23,6 +23,7 @@ import {
 import { getClientMetrics } from "@/lib/ads-connections.functions";
 import { getPublicReport } from "@/lib/shares.functions";
 import { MetricCard } from "@/components/metric-card";
+import { PlatformSelector, type PlatformFilter } from "@/components/platform-selector";
 
 
 type DatePreset =
@@ -149,6 +150,7 @@ function formatMetric(def: MetricDef, value: number, currency: string | null): s
 
 export function ClientMetrics({ clientId, hasAccounts, publicToken, allowDateChange = true }: { clientId: string; hasAccounts: boolean; publicToken?: string; allowDateChange?: boolean }) {
   const [datePreset, setDatePreset] = useState<DatePreset>("last_30d");
+  const [platform, setPlatform] = useState<PlatformFilter>("all");
   const [selected, setSelected] = useState<string[]>(DEFAULT_SELECTED);
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -169,13 +171,13 @@ export function ClientMetrics({ clientId, hasAccounts, publicToken, allowDateCha
   const fetchMetrics = useServerFn(getClientMetrics);
   const fetchPublic = useServerFn(getPublicReport);
   const query = useQuery({
-    queryKey: ["client-metrics", clientId, datePreset, publicToken ?? "auth"],
+    queryKey: ["client-metrics", clientId, datePreset, platform, publicToken ?? "auth"],
     queryFn: async () => {
       if (publicToken) {
-        const r = await fetchPublic({ data: { token: publicToken, datePreset } });
+        const r = await fetchPublic({ data: { token: publicToken, datePreset, platform } });
         return r.metrics;
       }
-      return fetchMetrics({ data: { clientId, datePreset } });
+      return fetchMetrics({ data: { clientId, datePreset, platform } });
     },
     enabled: hasAccounts,
     staleTime: 0,
