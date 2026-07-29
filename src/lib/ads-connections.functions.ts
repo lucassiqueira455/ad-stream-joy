@@ -82,20 +82,24 @@ export const disconnectPlatform = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const DATE_PRESET_SCHEMA = z.enum([
+  "today", "yesterday", "last_3d", "last_7d", "last_14d", "last_28d",
+  "last_30d", "last_90d", "this_month", "last_month",
+]);
+const PLATFORM_SCHEMA = z.enum(["all", "meta", "google"]).default("all");
+
 export const getClientMetrics = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
     z.object({
       clientId: z.string().uuid(),
-      datePreset: z.enum([
-        "today", "yesterday", "last_3d", "last_7d", "last_14d", "last_28d",
-        "last_30d", "last_90d", "this_month", "last_month",
-      ]).default("last_30d"),
+      datePreset: DATE_PRESET_SCHEMA.default("last_30d"),
+      platform: PLATFORM_SCHEMA,
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { computeClientMetrics } = await import("./metrics.server");
-    return computeClientMetrics(context.supabase, data.clientId, data.datePreset);
+    return computeClientMetrics(context.supabase, data.clientId, data.datePreset, data.platform);
   });
 
 export const getClientDashboard = createServerFn({ method: "POST" })
@@ -103,15 +107,13 @@ export const getClientDashboard = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z.object({
       clientId: z.string().uuid(),
-      datePreset: z.enum([
-        "today", "yesterday", "last_3d", "last_7d", "last_14d", "last_28d",
-        "last_30d", "last_90d", "this_month", "last_month",
-      ]).default("last_30d"),
+      datePreset: DATE_PRESET_SCHEMA.default("last_30d"),
+      platform: PLATFORM_SCHEMA,
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { computeClientDashboard } = await import("./metrics.server");
-    return computeClientDashboard(context.supabase, data.clientId, data.datePreset);
+    return computeClientDashboard(context.supabase, data.clientId, data.datePreset, data.platform);
   });
 
 
