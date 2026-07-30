@@ -316,15 +316,29 @@ export function ClientMetrics({ clientId, hasAccounts, publicToken, allowDateCha
           Erro ao carregar métricas: {(query.error as Error).message}
         </div>
       ) : (query.data?.accounts ?? []).some((a) => a.error) && !totals ? (
-        <div className="space-y-2 rounded-xl border border-destructive/40 bg-destructive/5 p-6 text-sm">
-          <p className="font-medium text-destructive">Erro ao buscar dados no Meta:</p>
-          <ul className="list-disc space-y-1 pl-5 text-destructive/90">
-            {query.data!.accounts.filter((a) => a.error).map((a) => (
-              <li key={a.account.id}>
-                <span className="font-medium">{a.account.account_name}:</span> {a.error}
-              </li>
-            ))}
-          </ul>
+        <div className="space-y-4 rounded-xl border border-destructive/40 bg-destructive/5 p-6 text-sm">
+          {Object.entries(
+            query.data!.accounts
+              .filter((a) => a.error)
+              .reduce<Record<string, typeof query.data.accounts>>((acc, a) => {
+                const p = a.account.platform ?? "unknown";
+                (acc[p] ||= []).push(a);
+                return acc;
+              }, {}),
+          ).map(([p, rows]) => (
+            <div key={p} className="space-y-2">
+              <p className="font-medium text-destructive">
+                Erro ao buscar dados do {PLATFORM_LABELS[p] ?? p}:
+              </p>
+              <ul className="list-disc space-y-1 pl-5 text-destructive/90">
+                {rows.map((a) => (
+                  <li key={a.account.id}>
+                    <span className="font-medium">{a.account.account_name}:</span> {a.error}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
       ) : !totals ? (
         <div className="rounded-xl border border-dashed border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">
