@@ -1,7 +1,14 @@
 // Meta Marketing API helpers. Server-only.
 const GRAPH = "https://graph.facebook.com/v21.0";
 
-export const META_SCOPES = ["ads_read", "business_management"];
+export const META_SCOPES = [
+  "ads_read",
+  "business_management",
+  "pages_show_list",
+  "pages_read_engagement",
+  "instagram_basic",
+  "instagram_manage_insights",
+];
 
 export function buildMetaAuthUrl(params: {
   redirectUri: string;
