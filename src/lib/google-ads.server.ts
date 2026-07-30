@@ -110,16 +110,23 @@ async function gaqlSearch(
   query: string,
   loginCustomerId?: string,
 ): Promise<GaqlRow[]> {
-  const res = await fetch(`${API}/customers/${customerId}/googleAds:search`, {
-    method: "POST",
-    headers: headers(accessToken, loginCustomerId ?? customerId),
-    body: JSON.stringify({ query, pageSize: 10000 }),
-  });
-  if (!res.ok) {
-    throw new Error(`Google Ads GAQL failed: ${res.status} ${await res.text()}`);
-  }
-  const json = (await res.json()) as { results?: GaqlRow[] };
-  return json.results ?? [];
+  const all: GaqlRow[] = [];
+  let pageToken: string | undefined;
+  // v21 removed page_size from GoogleAdsService.Search; paginate with nextPageToken only.
+  do {
+    const res = await fetch(`${API}/customers/${customerId}/googleAds:search`, {
+      method: "POST",
+      headers: headers(accessToken, loginCustomerId ?? customerId),
+      body: JSON.stringify(pageToken ? { query, pageToken } : { query }),
+    });
+    if (!res.ok) {
+      throw new Error(`Google Ads GAQL failed: ${res.status} ${await res.text()}`);
+    }
+    const json = (await res.json()) as { results?: GaqlRow[]; nextPageToken?: string };
+    all.push(...(json.results ?? []));
+    pageToken = json.nextPageToken || undefined;
+  } while (pageToken);
+  return all;
 }
 
 // ============= Helpers =============
