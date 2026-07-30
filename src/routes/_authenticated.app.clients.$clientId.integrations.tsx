@@ -127,6 +127,33 @@ function IntegrationsTab() {
     }
   };
 
+  const handleConnectGa4 = async () => {
+    setConnecting("ga4");
+    try {
+      const res = await startGa4({ data: { clientId } });
+      redirectToOAuth(res.url);
+    } catch (e) {
+      console.error(e);
+      setConnecting(null);
+      alert("Não foi possível iniciar a conexão com o Google Analytics.");
+    }
+  };
+
+  const handleSyncInstagram = async () => {
+    setBusy("ig-sync");
+    setIgMessage(null);
+    try {
+      const res = await syncIg();
+      setIgMessage(res.ok ? `${res.count} perfil(is) encontrado(s).` : res.error);
+      await qc.invalidateQueries({ queryKey: ["ad-accounts"] });
+      router.invalidate();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+
+
   const handleAssign = async (adAccountId: string, cId: string | null) => {
     setBusy(adAccountId);
     try {
