@@ -7,7 +7,6 @@ export function MetricCard({
   delta,
   icon: Icon,
   hint,
-  accent = "hsl(var(--primary))",
 }: {
   label: string;
   value: ReactNode;
@@ -18,21 +17,16 @@ export function MetricCard({
 }) {
   const positive = (delta ?? 0) >= 0;
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 transition-all hover:border-border hover:shadow-[0_1px_2px_0_rgb(0_0_0/0.04),0_4px_16px_-2px_rgb(0_0_0/0.06)]">
-      <div
-        aria-hidden
-        className="absolute inset-x-0 top-0 h-[2px]"
-        style={{ background: accent }}
-      />
+    <div className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 transition-all hover:border-foreground/20 hover:shadow-[0_1px_2px_0_rgb(0_0_0/0.04),0_4px_16px_-2px_rgb(0_0_0/0.06)]">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 space-y-3">
           <div className="flex items-center gap-2">
-            <Icon className="h-3.5 w-3.5" style={{ color: accent }} strokeWidth={2.25} />
-            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground/80">
+            <Icon className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
               {label}
             </p>
           </div>
-          <p className="font-display text-3xl font-semibold tracking-tight tabular-nums">
+          <p className="font-display text-3xl font-semibold tracking-tight tabular-nums text-foreground">
             {value}
           </p>
           {hint ? (
