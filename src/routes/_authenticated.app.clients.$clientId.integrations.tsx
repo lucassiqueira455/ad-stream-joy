@@ -43,18 +43,27 @@ function IntegrationsTab() {
 
   const startMeta = useServerFn(startMetaOAuth);
   const startGoogle = useServerFn(startGoogleOAuth);
+  const startGa4 = useServerFn(startGa4OAuth);
+  const syncIg = useServerFn(syncInstagramAccounts);
   const disconnect = useServerFn(disconnectPlatform);
   const assign = useServerFn(assignAdAccountToClient);
 
-  const [connecting, setConnecting] = useState<null | "meta" | "google">(null);
+  const [connecting, setConnecting] = useState<null | "meta" | "google" | "ga4">(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [igMessage, setIgMessage] = useState<string | null>(null);
 
   const metaConn = connections.find((c) => c.platform === "meta");
   const googleConn = connections.find((c) => c.platform === "google");
+  const ga4Conn = connections.find((c) => c.platform === "ga4");
   const clientMetaAccounts = accounts.filter((a) => a.platform === "meta" && a.client_id === clientId);
   const availableMetaAccounts = accounts.filter((a) => a.platform === "meta" && !a.client_id);
   const clientGoogleAccounts = accounts.filter((a) => a.platform === "google" && a.client_id === clientId);
   const availableGoogleAccounts = accounts.filter((a) => a.platform === "google" && !a.client_id);
+  const clientIgAccounts = accounts.filter((a) => a.platform === "instagram" && a.client_id === clientId);
+  const availableIgAccounts = accounts.filter((a) => a.platform === "instagram" && !a.client_id);
+  const clientGa4Accounts = accounts.filter((a) => a.platform === "ga4" && a.client_id === clientId);
+  const availableGa4Accounts = accounts.filter((a) => a.platform === "ga4" && !a.client_id);
+
 
   const redirectToOAuth = (url: string) => {
     // Google/Facebook block their consent pages inside iframes via
