@@ -16,5 +16,10 @@ function DashboardTab() {
   const { clientId } = Route.useParams();
   const { data: accounts } = useSuspenseQuery(adAccountsQuery);
   const hasAccounts = accounts.some((a) => a.client_id === clientId);
-  return <ClientDashboardView clientId={clientId} hasAccounts={hasAccounts} />;
+  return (
+    <>
+      <ClientDashboardView clientId={clientId} hasAccounts={hasAccounts} />
+      <OrganicPanel clientId={clientId} />
+    </>
+  );
 }
