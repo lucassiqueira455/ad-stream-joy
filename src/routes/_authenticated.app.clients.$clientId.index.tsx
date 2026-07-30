@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { ClientDashboardView } from "@/components/client-dashboard";
+import { OrganicPanel } from "@/components/organic-panel";
 import { listAdAccounts } from "@/lib/ads-connections.functions";
 
 const adAccountsQuery = queryOptions({
