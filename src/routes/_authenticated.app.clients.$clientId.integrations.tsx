@@ -315,16 +315,42 @@ function IntegrationsTab() {
           }
         />
 
-        {/* Instagram (via Meta) */}
+        {/* Instagram orgânico (via Meta) */}
         <IntegrationCard
           platform="instagram"
           status={metaConn ? "connected" : "disconnected"}
-          description="Dados de perfil, alcance e engajamento."
+          description="Seguidores, alcance, visitas ao perfil e engajamento orgânico."
           meta={
             metaConn ? (
-              <p className="text-xs text-muted-foreground">Habilitado pela conexão do Meta.</p>
+              <div className="space-y-1">
+                <p className="text-xs">
+                  <span className="text-muted-foreground">Perfis vinculados:</span>{" "}
+                  <span className="text-foreground">{clientIgAccounts.length}</span>
+                </p>
+                {clientIgAccounts.length > 0 && (
+                  <ul className="mt-3 space-y-1">
+                    {clientIgAccounts.map((a) => (
+                      <li key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/40 px-3 py-1.5 text-xs">
+                        <span className="min-w-0 truncate text-foreground">{a.account_name}</span>
+                        <button
+                          onClick={() => handleAssign(a.id, null)}
+                          disabled={busy === a.id}
+                          className="rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          aria-label="Desvincular"
+                        >
+                          {busy === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {igMessage && <p className="mt-2 text-xs text-muted-foreground">{igMessage}</p>}
+              </div>
             ) : (
-              <p className="text-xs text-muted-foreground">Conecte o Meta Ads para habilitar.</p>
+              <p className="text-xs text-muted-foreground">
+                Conecte o Meta Ads para habilitar. O perfil precisa ser Business/Criador e estar
+                vinculado a uma Página do Facebook.
+              </p>
             )
           }
           actions={
@@ -336,7 +362,31 @@ function IntegrationsTab() {
               >
                 Conectar via Meta
               </button>
-            ) : null
+            ) : (
+              <>
+                {availableIgAccounts.length > 0 && (
+                  <select
+                    onChange={(e) => e.target.value && handleAssign(e.target.value, clientId)}
+                    defaultValue=""
+                    disabled={busy !== null}
+                    className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">+ Vincular perfil…</option>
+                    {availableIgAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>{a.account_name}</option>
+                    ))}
+                  </select>
+                )}
+                <button
+                  onClick={handleSyncInstagram}
+                  disabled={busy === "ig-sync"}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-60"
+                >
+                  {busy === "ig-sync" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Buscar perfis
+                </button>
+              </>
+            )
           }
         />
 
@@ -365,10 +415,89 @@ function IntegrationsTab() {
           }
         />
 
-        {/* GA4 / GTM / Search Console / TikTok — placeholders */}
+        {/* Google Analytics 4 */}
+        <IntegrationCard
+          platform="ga4"
+          status={ga4Conn ? "connected" : "disconnected"}
+          description="Sessões, usuários, canais de tráfego e conversões."
+          meta={
+            ga4Conn && (
+              <div className="space-y-1">
+                <p className="text-xs">
+                  <span className="text-muted-foreground">Conta OAuth:</span>{" "}
+                  <span className="text-foreground">{ga4Conn.display_name ?? "Google Analytics"}</span>
+                </p>
+                <p className="text-xs">
+                  <span className="text-muted-foreground">Propriedades vinculadas:</span>{" "}
+                  <span className="text-foreground">{clientGa4Accounts.length}</span>
+                </p>
+                {clientGa4Accounts.length > 0 && (
+                  <ul className="mt-3 space-y-1">
+                    {clientGa4Accounts.map((a) => (
+                      <li key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/40 px-3 py-1.5 text-xs">
+                        <span className="min-w-0 truncate text-foreground">{a.account_name}</span>
+                        <button
+                          onClick={() => handleAssign(a.id, null)}
+                          disabled={busy === a.id}
+                          className="rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          aria-label="Desvincular"
+                        >
+                          {busy === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )
+          }
+          actions={
+            !ga4Conn ? (
+              <button
+                onClick={handleConnectGa4}
+                disabled={connecting === "ga4"}
+                className="inline-flex items-center gap-2 rounded-xl gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow disabled:opacity-60"
+              >
+                {connecting === "ga4" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                Conectar
+              </button>
+            ) : (
+              <>
+                {availableGa4Accounts.length > 0 && (
+                  <select
+                    onChange={(e) => e.target.value && handleAssign(e.target.value, clientId)}
+                    defaultValue=""
+                    disabled={busy !== null}
+                    className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">+ Vincular propriedade…</option>
+                    {availableGa4Accounts.map((a) => (
+                      <option key={a.id} value={a.id}>{a.account_name}</option>
+                    ))}
+                  </select>
+                )}
+                <button
+                  onClick={handleConnectGa4}
+                  disabled={connecting === "ga4"}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-60"
+                >
+                  Reconectar
+                </button>
+                <button
+                  onClick={() => handleDisconnect(ga4Conn, "Google Analytics")}
+                  disabled={busy === ga4Conn.id}
+                  className="inline-flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-60"
+                >
+                  Desconectar
+                </button>
+              </>
+            )
+          }
+        />
+
+        {/* GTM / Search Console / TikTok — placeholders */}
         {(
           [
-            { p: "ga4", desc: "Sessões, conversões e origem de tráfego." },
             { p: "gtm", desc: "Contêineres, tags e triggers." },
             { p: "searchconsole", desc: "Impressões, cliques e posição no Google." },
             { p: "tiktok", desc: "Campanhas e criativos do TikTok Ads." },
@@ -389,6 +518,7 @@ function IntegrationsTab() {
             }
           />
         ))}
+
       </div>
     </div>
   );
