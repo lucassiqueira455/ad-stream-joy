@@ -24,6 +24,7 @@ import { Route as AuthenticatedAppReportsRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAppClientsIndexRouteImport } from './routes/_authenticated.app.clients.index'
 import { Route as ApiAuthMetaCallbackRouteImport } from './routes/api/auth/meta.callback'
 import { Route as ApiAuthGoogleCallbackRouteImport } from './routes/api/auth/google.callback'
+import { Route as ApiAuthGa4CallbackRouteImport } from './routes/api/auth/ga4.callback'
 import { Route as AuthenticatedAppClientsClientIdRouteImport } from './routes/_authenticated.app.clients.$clientId'
 import { Route as AuthenticatedAppClientsClientIdIndexRouteImport } from './routes/_authenticated.app.clients.$clientId.index'
 import { Route as AuthenticatedAppClientsClientIdSettingsRouteImport } from './routes/_authenticated.app.clients.$clientId.settings'
@@ -108,6 +109,11 @@ const ApiAuthGoogleCallbackRoute = ApiAuthGoogleCallbackRouteImport.update({
   path: '/api/auth/google/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthGa4CallbackRoute = ApiAuthGa4CallbackRouteImport.update({
+  id: '/api/auth/ga4/callback',
+  path: '/api/auth/ga4/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAppClientsClientIdRoute =
   AuthenticatedAppClientsClientIdRouteImport.update({
     id: '/clients/$clientId',
@@ -164,6 +170,7 @@ export interface FileRoutesByFullPath {
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/app/clients/$clientId': typeof AuthenticatedAppClientsClientIdRouteWithChildren
+  '/api/auth/ga4/callback': typeof ApiAuthGa4CallbackRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
   '/api/auth/meta/callback': typeof ApiAuthMetaCallbackRoute
   '/app/clients/': typeof AuthenticatedAppClientsIndexRoute
@@ -184,6 +191,7 @@ export interface FileRoutesByTo {
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app': typeof AuthenticatedAppIndexRoute
+  '/api/auth/ga4/callback': typeof ApiAuthGa4CallbackRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
   '/api/auth/meta/callback': typeof ApiAuthMetaCallbackRoute
   '/app/clients': typeof AuthenticatedAppClientsIndexRoute
@@ -209,6 +217,7 @@ export interface FileRoutesById {
   '/_authenticated/app/settings': typeof AuthenticatedAppSettingsRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/clients/$clientId': typeof AuthenticatedAppClientsClientIdRouteWithChildren
+  '/api/auth/ga4/callback': typeof ApiAuthGa4CallbackRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
   '/api/auth/meta/callback': typeof ApiAuthMetaCallbackRoute
   '/_authenticated/app/clients/': typeof AuthenticatedAppClientsIndexRoute
@@ -234,6 +243,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/'
     | '/app/clients/$clientId'
+    | '/api/auth/ga4/callback'
     | '/api/auth/google/callback'
     | '/api/auth/meta/callback'
     | '/app/clients/'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | '/app/reports'
     | '/app/settings'
     | '/app'
+    | '/api/auth/ga4/callback'
     | '/api/auth/google/callback'
     | '/api/auth/meta/callback'
     | '/app/clients'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/settings'
     | '/_authenticated/app/'
     | '/_authenticated/app/clients/$clientId'
+    | '/api/auth/ga4/callback'
     | '/api/auth/google/callback'
     | '/api/auth/meta/callback'
     | '/_authenticated/app/clients/'
@@ -295,6 +307,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   DashboardTokenRoute: typeof DashboardTokenRoute
   ReportTokenRoute: typeof ReportTokenRoute
+  ApiAuthGa4CallbackRoute: typeof ApiAuthGa4CallbackRoute
   ApiAuthGoogleCallbackRoute: typeof ApiAuthGoogleCallbackRoute
   ApiAuthMetaCallbackRoute: typeof ApiAuthMetaCallbackRoute
 }
@@ -404,6 +417,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/google/callback'
       fullPath: '/api/auth/google/callback'
       preLoaderRoute: typeof ApiAuthGoogleCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/ga4/callback': {
+      id: '/api/auth/ga4/callback'
+      path: '/api/auth/ga4/callback'
+      fullPath: '/api/auth/ga4/callback'
+      preLoaderRoute: typeof ApiAuthGa4CallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/app/clients/$clientId': {
@@ -540,19 +560,10 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   DashboardTokenRoute: DashboardTokenRoute,
   ReportTokenRoute: ReportTokenRoute,
+  ApiAuthGa4CallbackRoute: ApiAuthGa4CallbackRoute,
   ApiAuthGoogleCallbackRoute: ApiAuthGoogleCallbackRoute,
   ApiAuthMetaCallbackRoute: ApiAuthMetaCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

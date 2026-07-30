@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { ClientDashboardView } from "@/components/client-dashboard";
+import { OrganicPanel } from "@/components/organic-panel";
 import { listAdAccounts } from "@/lib/ads-connections.functions";
 
 const adAccountsQuery = queryOptions({
@@ -16,5 +17,10 @@ function DashboardTab() {
   const { clientId } = Route.useParams();
   const { data: accounts } = useSuspenseQuery(adAccountsQuery);
   const hasAccounts = accounts.some((a) => a.client_id === clientId);
-  return <ClientDashboardView clientId={clientId} hasAccounts={hasAccounts} />;
+  return (
+    <>
+      <ClientDashboardView clientId={clientId} hasAccounts={hasAccounts} />
+      <OrganicPanel clientId={clientId} />
+    </>
+  );
 }

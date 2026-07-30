@@ -12,6 +12,7 @@ import {
   disconnectPlatform,
   assignAdAccountToClient,
 } from "@/lib/ads-connections.functions";
+import { startGa4OAuth, syncInstagramAccounts } from "@/lib/organic.functions";
 import type { PlatformKey } from "@/components/platform-chip";
 
 const connectionsQuery = queryOptions({
@@ -43,18 +44,27 @@ function IntegrationsTab() {
 
   const startMeta = useServerFn(startMetaOAuth);
   const startGoogle = useServerFn(startGoogleOAuth);
+  const startGa4 = useServerFn(startGa4OAuth);
+  const syncIg = useServerFn(syncInstagramAccounts);
   const disconnect = useServerFn(disconnectPlatform);
   const assign = useServerFn(assignAdAccountToClient);
 
-  const [connecting, setConnecting] = useState<null | "meta" | "google">(null);
+  const [connecting, setConnecting] = useState<null | "meta" | "google" | "ga4">(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [igMessage, setIgMessage] = useState<string | null>(null);
 
   const metaConn = connections.find((c) => c.platform === "meta");
   const googleConn = connections.find((c) => c.platform === "google");
+  const ga4Conn = connections.find((c) => c.platform === "ga4");
   const clientMetaAccounts = accounts.filter((a) => a.platform === "meta" && a.client_id === clientId);
   const availableMetaAccounts = accounts.filter((a) => a.platform === "meta" && !a.client_id);
   const clientGoogleAccounts = accounts.filter((a) => a.platform === "google" && a.client_id === clientId);
   const availableGoogleAccounts = accounts.filter((a) => a.platform === "google" && !a.client_id);
+  const clientIgAccounts = accounts.filter((a) => a.platform === "instagram" && a.client_id === clientId);
+  const availableIgAccounts = accounts.filter((a) => a.platform === "instagram" && !a.client_id);
+  const clientGa4Accounts = accounts.filter((a) => a.platform === "ga4" && a.client_id === clientId);
+  const availableGa4Accounts = accounts.filter((a) => a.platform === "ga4" && !a.client_id);
+
 
   const redirectToOAuth = (url: string) => {
     // Google/Facebook block their consent pages inside iframes via
@@ -116,6 +126,33 @@ function IntegrationsTab() {
       alert("Não foi possível iniciar a conexão com o Google. Verifique as credenciais.");
     }
   };
+
+  const handleConnectGa4 = async () => {
+    setConnecting("ga4");
+    try {
+      const res = await startGa4({ data: { clientId } });
+      redirectToOAuth(res.url);
+    } catch (e) {
+      console.error(e);
+      setConnecting(null);
+      alert("Não foi possível iniciar a conexão com o Google Analytics.");
+    }
+  };
+
+  const handleSyncInstagram = async () => {
+    setBusy("ig-sync");
+    setIgMessage(null);
+    try {
+      const res = await syncIg();
+      setIgMessage(res.ok ? `${res.count} perfil(is) encontrado(s).` : res.error);
+      await qc.invalidateQueries({ queryKey: ["ad-accounts"] });
+      router.invalidate();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+
 
   const handleAssign = async (adAccountId: string, cId: string | null) => {
     setBusy(adAccountId);
@@ -315,16 +352,42 @@ function IntegrationsTab() {
           }
         />
 
-        {/* Instagram (via Meta) */}
+        {/* Instagram orgânico (via Meta) */}
         <IntegrationCard
           platform="instagram"
           status={metaConn ? "connected" : "disconnected"}
-          description="Dados de perfil, alcance e engajamento."
+          description="Seguidores, alcance, visitas ao perfil e engajamento orgânico."
           meta={
             metaConn ? (
-              <p className="text-xs text-muted-foreground">Habilitado pela conexão do Meta.</p>
+              <div className="space-y-1">
+                <p className="text-xs">
+                  <span className="text-muted-foreground">Perfis vinculados:</span>{" "}
+                  <span className="text-foreground">{clientIgAccounts.length}</span>
+                </p>
+                {clientIgAccounts.length > 0 && (
+                  <ul className="mt-3 space-y-1">
+                    {clientIgAccounts.map((a) => (
+                      <li key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/40 px-3 py-1.5 text-xs">
+                        <span className="min-w-0 truncate text-foreground">{a.account_name}</span>
+                        <button
+                          onClick={() => handleAssign(a.id, null)}
+                          disabled={busy === a.id}
+                          className="rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          aria-label="Desvincular"
+                        >
+                          {busy === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {igMessage && <p className="mt-2 text-xs text-muted-foreground">{igMessage}</p>}
+              </div>
             ) : (
-              <p className="text-xs text-muted-foreground">Conecte o Meta Ads para habilitar.</p>
+              <p className="text-xs text-muted-foreground">
+                Conecte o Meta Ads para habilitar. O perfil precisa ser Business/Criador e estar
+                vinculado a uma Página do Facebook.
+              </p>
             )
           }
           actions={
@@ -336,7 +399,31 @@ function IntegrationsTab() {
               >
                 Conectar via Meta
               </button>
-            ) : null
+            ) : (
+              <>
+                {availableIgAccounts.length > 0 && (
+                  <select
+                    onChange={(e) => e.target.value && handleAssign(e.target.value, clientId)}
+                    defaultValue=""
+                    disabled={busy !== null}
+                    className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">+ Vincular perfil…</option>
+                    {availableIgAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>{a.account_name}</option>
+                    ))}
+                  </select>
+                )}
+                <button
+                  onClick={handleSyncInstagram}
+                  disabled={busy === "ig-sync"}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-60"
+                >
+                  {busy === "ig-sync" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Buscar perfis
+                </button>
+              </>
+            )
           }
         />
 
@@ -365,10 +452,89 @@ function IntegrationsTab() {
           }
         />
 
-        {/* GA4 / GTM / Search Console / TikTok — placeholders */}
+        {/* Google Analytics 4 */}
+        <IntegrationCard
+          platform="ga4"
+          status={ga4Conn ? "connected" : "disconnected"}
+          description="Sessões, usuários, canais de tráfego e conversões."
+          meta={
+            ga4Conn && (
+              <div className="space-y-1">
+                <p className="text-xs">
+                  <span className="text-muted-foreground">Conta OAuth:</span>{" "}
+                  <span className="text-foreground">{ga4Conn.display_name ?? "Google Analytics"}</span>
+                </p>
+                <p className="text-xs">
+                  <span className="text-muted-foreground">Propriedades vinculadas:</span>{" "}
+                  <span className="text-foreground">{clientGa4Accounts.length}</span>
+                </p>
+                {clientGa4Accounts.length > 0 && (
+                  <ul className="mt-3 space-y-1">
+                    {clientGa4Accounts.map((a) => (
+                      <li key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/40 px-3 py-1.5 text-xs">
+                        <span className="min-w-0 truncate text-foreground">{a.account_name}</span>
+                        <button
+                          onClick={() => handleAssign(a.id, null)}
+                          disabled={busy === a.id}
+                          className="rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          aria-label="Desvincular"
+                        >
+                          {busy === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )
+          }
+          actions={
+            !ga4Conn ? (
+              <button
+                onClick={handleConnectGa4}
+                disabled={connecting === "ga4"}
+                className="inline-flex items-center gap-2 rounded-xl gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow disabled:opacity-60"
+              >
+                {connecting === "ga4" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                Conectar
+              </button>
+            ) : (
+              <>
+                {availableGa4Accounts.length > 0 && (
+                  <select
+                    onChange={(e) => e.target.value && handleAssign(e.target.value, clientId)}
+                    defaultValue=""
+                    disabled={busy !== null}
+                    className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">+ Vincular propriedade…</option>
+                    {availableGa4Accounts.map((a) => (
+                      <option key={a.id} value={a.id}>{a.account_name}</option>
+                    ))}
+                  </select>
+                )}
+                <button
+                  onClick={handleConnectGa4}
+                  disabled={connecting === "ga4"}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-60"
+                >
+                  Reconectar
+                </button>
+                <button
+                  onClick={() => handleDisconnect(ga4Conn, "Google Analytics")}
+                  disabled={busy === ga4Conn.id}
+                  className="inline-flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-60"
+                >
+                  Desconectar
+                </button>
+              </>
+            )
+          }
+        />
+
+        {/* GTM / Search Console / TikTok — placeholders */}
         {(
           [
-            { p: "ga4", desc: "Sessões, conversões e origem de tráfego." },
             { p: "gtm", desc: "Contêineres, tags e triggers." },
             { p: "searchconsole", desc: "Impressões, cliques e posição no Google." },
             { p: "tiktok", desc: "Campanhas e criativos do TikTok Ads." },
@@ -389,6 +555,7 @@ function IntegrationsTab() {
             }
           />
         ))}
+
       </div>
     </div>
   );

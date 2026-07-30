@@ -26,7 +26,9 @@ export const Route = createFileRoute("/api/auth/meta/callback")({
             fetchMetaMe,
             fetchMetaAdAccounts,
             metaStatusLabel,
+            META_SCOPES,
           } = await import("@/lib/meta.server");
+          const { fetchInstagramAccounts } = await import("@/lib/instagram.server");
 
           const payload = verifyState<{ uid: string; redirectUri: string }>(state);
 
@@ -38,8 +40,13 @@ export const Route = createFileRoute("/api/auth/meta/callback")({
 
           const me = await fetchMetaMe(longLived.access_token);
           const accounts = await fetchMetaAdAccounts(longLived.access_token);
+          const igAccounts = await fetchInstagramAccounts(longLived.access_token).catch((e) => {
+            console.error("Instagram accounts import failed", e);
+            return [];
+          });
 
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
 
           const expiresAt = longLived.expires_in
             ? new Date(Date.now() + longLived.expires_in * 1000).toISOString()
@@ -54,7 +61,7 @@ export const Route = createFileRoute("/api/auth/meta/callback")({
               display_name: me.name,
               access_token_encrypted: encryptToken(longLived.access_token),
               expires_at: expiresAt,
-              scopes: ["ads_read", "business_management"],
+              scopes: META_SCOPES,
             })
             .select("id")
             .single();
@@ -81,7 +88,27 @@ export const Route = createFileRoute("/api/auth/meta/callback")({
             if (accErr) console.error("Upsert ad_accounts failed", accErr);
           }
 
-          return redirectWith(backTo, { meta: "connected", count: String(accounts.length) });
+          if (igAccounts.length > 0) {
+            const igRows = igAccounts.map((ig) => ({
+              user_id: payload.uid,
+              connection_id: connection.id,
+              platform: "instagram" as const,
+              external_account_id: ig.igId,
+              account_name: `@${ig.username}`,
+              status: "ACTIVE",
+            }));
+            const { error: igErr } = await supabaseAdmin
+              .from("ad_accounts")
+              .upsert(igRows, { onConflict: "connection_id,external_account_id" });
+            if (igErr) console.error("Upsert instagram accounts failed", igErr);
+          }
+
+          return redirectWith(backTo, {
+            meta: "connected",
+            count: String(accounts.length),
+            ig: String(igAccounts.length),
+          });
+
         } catch (e) {
           console.error("Meta callback error", e);
           return redirectWith(backTo, { meta: "error" });
