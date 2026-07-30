@@ -332,7 +332,7 @@ export function ClientMetrics({ clientId, hasAccounts, publicToken, allowDateCha
           {Object.entries(
             query.data!.accounts
               .filter((a) => a.error)
-              .reduce<Record<string, typeof query.data.accounts>>((acc, a) => {
+              .reduce<Record<string, NonNullable<typeof query.data>["accounts"]>>((acc, a) => {
                 const p = a.account.platform ?? "unknown";
                 (acc[p] ||= []).push(a);
                 return acc;
