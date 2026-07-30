@@ -26,7 +26,9 @@ export const Route = createFileRoute("/api/auth/meta/callback")({
             fetchMetaMe,
             fetchMetaAdAccounts,
             metaStatusLabel,
+            META_SCOPES,
           } = await import("@/lib/meta.server");
+          const { fetchInstagramAccounts } = await import("@/lib/instagram.server");
 
           const payload = verifyState<{ uid: string; redirectUri: string }>(state);
 
@@ -38,8 +40,13 @@ export const Route = createFileRoute("/api/auth/meta/callback")({
 
           const me = await fetchMetaMe(longLived.access_token);
           const accounts = await fetchMetaAdAccounts(longLived.access_token);
+          const igAccounts = await fetchInstagramAccounts(longLived.access_token).catch((e) => {
+            console.error("Instagram accounts import failed", e);
+            return [];
+          });
 
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
 
           const expiresAt = longLived.expires_in
             ? new Date(Date.now() + longLived.expires_in * 1000).toISOString()
