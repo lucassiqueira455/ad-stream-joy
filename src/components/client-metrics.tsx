@@ -148,6 +148,18 @@ function formatMetric(def: MetricDef, value: number, currency: string | null): s
   }
 }
 
+const PLATFORM_LABELS: Record<string, string> = {
+  meta: "Meta Ads",
+  google: "Google Ads",
+  ga4: "Google Analytics",
+  gtm: "Google Tag Manager",
+  instagram: "Instagram Business",
+  facebook: "Facebook Page",
+  searchconsole: "Google Search Console",
+  tiktok: "TikTok Ads",
+};
+
+
 export function ClientMetrics({ clientId, hasAccounts, publicToken, allowDateChange = true }: { clientId: string; hasAccounts: boolean; publicToken?: string; allowDateChange?: boolean }) {
   const [datePreset, setDatePreset] = useState<DatePreset>("last_30d");
   const [platform, setPlatform] = useState<PlatformFilter>("all");
