@@ -12,6 +12,7 @@ import {
   disconnectPlatform,
   assignAdAccountToClient,
 } from "@/lib/ads-connections.functions";
+import { startGa4OAuth, syncInstagramAccounts } from "@/lib/organic.functions";
 import type { PlatformKey } from "@/components/platform-chip";
 
 const connectionsQuery = queryOptions({
