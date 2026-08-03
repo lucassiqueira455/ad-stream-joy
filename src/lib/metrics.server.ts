@@ -24,7 +24,7 @@ import {
 export type DatePreset =
   | "today" | "yesterday" | "last_3d" | "last_7d" | "last_14d"
   | "last_28d" | "last_30d" | "last_90d" | "this_month" | "last_month"
-  | `custom:${string}`;
+  | (string & {});
 
 export type PlatformFilter = "all" | "meta" | "google";
 
