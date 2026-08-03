@@ -93,10 +93,10 @@
   --primary-foreground: oklch(0.99 0 0);
 
   --secondary: oklch(0.97 0.01 250);
-  --secondary-foreground: oklch(0.2 0.02 250);
+  --secondary-foreground: oklch(0.18 0.02 250);
 
   --muted: oklch(0.97 0.008 250);
-  --muted-foreground: oklch(0.42 0.02 250);
+  --muted-foreground: oklch(0.36 0.02 250);
 
   --accent: oklch(0.96 0.02 262);
   --accent-foreground: oklch(0.2 0.03 262);
@@ -113,8 +113,8 @@
   --meta: oklch(0.56 0.22 262);
   --google: oklch(0.6 0.17 145);
 
-  --border: oklch(0.92 0.008 250);
-  --input: oklch(0.92 0.008 250);
+  --border: oklch(0.885 0.008 250);
+  --input: oklch(0.885 0.008 250);
   --ring: oklch(0.56 0.22 262);
 
   --chart-1: oklch(0.56 0.22 262);
@@ -124,12 +124,12 @@
   --chart-5: oklch(0.6 0.18 210);
 
   --sidebar: oklch(0.985 0.004 250);
-  --sidebar-foreground: oklch(0.22 0.02 250);
+  --sidebar-foreground: oklch(0.2 0.02 250);
   --sidebar-primary: oklch(0.56 0.22 262);
   --sidebar-primary-foreground: oklch(0.99 0 0);
   --sidebar-accent: oklch(0.95 0.02 262);
   --sidebar-accent-foreground: oklch(0.22 0.03 262);
-  --sidebar-border: oklch(0.92 0.008 250);
+  --sidebar-border: oklch(0.885 0.008 250);
   --sidebar-ring: oklch(0.56 0.22 262);
 
   --platform-meta: oklch(0.56 0.22 262);
@@ -259,4 +259,54 @@
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-elevated);
   border: 1px solid var(--color-border);
+}
+
+/* Light-mode readability: no washed-out text on white surfaces. */
+:root:not(.dark) {
+  --tooltip-fg: var(--foreground);
+}
+:root:not(.dark) input,
+:root:not(.dark) select,
+:root:not(.dark) textarea {
+  color: var(--color-foreground);
+}
+:root:not(.dark) input::placeholder,
+:root:not(.dark) textarea::placeholder {
+  color: oklch(0.5 0.02 250);
+}
+:root:not(.dark) table,
+:root:not(.dark) th,
+:root:not(.dark) td {
+  color: var(--color-foreground);
+}
+:root:not(.dark) .recharts-tooltip-wrapper {
+  color: var(--color-foreground);
+}
+
+/* ============ PRINT / PDF ============ */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  :root {
+    --background: #ffffff;
+    --card: #ffffff;
+    --foreground: #111827;
+    --muted-foreground: #374151;
+    --border: #d1d5db;
+  }
+  html, body {
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+  aside, nav, .print\:hidden { display: none !important; }
+  main { padding: 0 !important; }
+  section, .card-premium, [class*="rounded-xl"] {
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  h1, h2, h3 { break-after: avoid; }
+  a[href]::after { content: ""; }
 }
