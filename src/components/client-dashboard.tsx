@@ -44,22 +44,9 @@ import {
 import { getClientDashboard } from "@/lib/ads-connections.functions";
 import { getPublicDashboard } from "@/lib/shares.functions";
 import { PlatformSelector, type PlatformFilter } from "@/components/platform-selector";
+import { DateRangeSelect, LastSync } from "@/components/date-range-select";
 
-type DatePreset =
-  | "today" | "yesterday" | "last_3d" | "last_7d" | "last_14d"
-  | "last_28d" | "last_30d" | "last_90d" | "this_month" | "last_month";
-
-const DATE_OPTIONS: { value: DatePreset; label: string }[] = [
-  { value: "today", label: "Hoje" },
-  { value: "yesterday", label: "Ontem" },
-  { value: "last_7d", label: "Últimos 7 dias" },
-  { value: "last_14d", label: "Últimos 14 dias" },
-  { value: "last_28d", label: "Últimos 28 dias" },
-  { value: "last_30d", label: "Últimos 30 dias" },
-  { value: "last_90d", label: "Últimos 90 dias" },
-  { value: "this_month", label: "Este mês" },
-  { value: "last_month", label: "Mês passado" },
-];
+type DatePreset = string;
 
 function fmtCurrency(v: number, currency: string | null): string {
   if (!Number.isFinite(v)) return "—";
@@ -476,7 +463,7 @@ export function ClientDashboardView({
         <div>
           <h2 className="font-display text-2xl font-bold">Dashboard</h2>
           <p className="text-sm text-muted-foreground">
-            {data?.lastSyncedAt ? <>Atualizado {timeAgo(data.lastSyncedAt)} · {new Date(now).toLocaleTimeString("pt-BR")}</> : "Dados ao vivo do Meta"}
+            <LastSync at={query.dataUpdatedAt} fetching={query.isFetching} />
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -486,13 +473,11 @@ export function ClientDashboardView({
             connectedPlatforms={(data as { connectedPlatforms?: string[] } | undefined)?.connectedPlatforms}
           />
           {allowDateChange && (
-            <select value={datePreset} onChange={(e) => setDatePreset(e.target.value as DatePreset)} className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
-              {DATE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <DateRangeSelect value={datePreset} onChange={setDatePreset} />
           )}
           <button onClick={() => query.refetch()} disabled={query.isFetching} className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm hover:bg-accent">
             {query.isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-            Atualizar
+            Atualizar dados
           </button>
         </div>
       </div>
