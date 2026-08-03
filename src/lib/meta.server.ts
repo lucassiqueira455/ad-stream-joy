@@ -1,6 +1,22 @@
 // Meta Marketing API helpers. Server-only.
 const GRAPH = "https://graph.facebook.com/v21.0";
 
+// Accepts either a Meta date_preset or a custom range encoded as
+// "custom:YYYY-MM-DD:YYYY-MM-DD".
+export function parseCustomPreset(preset: string): { since: string; until: string } | null {
+  if (!preset?.startsWith("custom:")) return null;
+  const [, since, until] = preset.split(":");
+  if (!since || !until) return null;
+  return { since, until };
+}
+
+function setDatePreset(url: URL, preset: string): void {
+  const custom = parseCustomPreset(preset);
+  if (custom) url.searchParams.set("time_range", JSON.stringify(custom));
+  else url.searchParams.set("date_preset", preset);
+}
+
+
 export const META_SCOPES = [
   "ads_read",
   "business_management",
@@ -601,7 +617,7 @@ async function fetchCampaignMetricBreakdown(params: {
     if (params.timeRange) {
       url.searchParams.set("time_range", JSON.stringify(params.timeRange));
     } else {
-      url.searchParams.set("date_preset", params.datePreset);
+      setDatePreset(url, params.datePreset);
     }
     url.searchParams.set("use_unified_attribution_setting", "true");
     url.searchParams.set("level", "campaign");
@@ -691,7 +707,7 @@ export async function fetchAdAccountInsights(params: {
   if (timeRange) {
     url.searchParams.set("time_range", JSON.stringify(timeRange));
   } else {
-    url.searchParams.set("date_preset", datePreset);
+    setDatePreset(url, datePreset);
   }
   // Match Ads Manager attribution at campaign/ad-set level when configured.
   url.searchParams.set("use_unified_attribution_setting", "true");
@@ -838,7 +854,7 @@ export async function fetchAdAccountDaily(params: {
     "fields",
     ["date_start", "spend", "impressions", "clicks", "inline_link_clicks", "actions", "conversions"].join(","),
   );
-  url.searchParams.set("date_preset", datePreset);
+  setDatePreset(url, datePreset);
   url.searchParams.set("use_unified_attribution_setting", "true");
   url.searchParams.set("time_increment", "1");
   url.searchParams.set("level", "account");
@@ -918,7 +934,7 @@ export async function fetchAdAccountCampaigns(params: {
       "actions", "conversions", "results", "cost_per_result",
     ].join(","),
   );
-  insightsUrl.searchParams.set("date_preset", datePreset);
+  setDatePreset(insightsUrl, datePreset);
   insightsUrl.searchParams.set("use_unified_attribution_setting", "true");
   insightsUrl.searchParams.set("level", "campaign");
   insightsUrl.searchParams.set("limit", "200");
@@ -1062,7 +1078,7 @@ export async function fetchAdAccountAds(params: {
     "fields",
     ["ad_id", "ad_name", "campaign_id", "campaign_name", "spend", "impressions", "clicks", "inline_link_clicks", "ctr", "actions", "conversions", "results", "cost_per_result"].join(","),
   );
-  url.searchParams.set("date_preset", datePreset);
+  setDatePreset(url, datePreset);
   url.searchParams.set("use_unified_attribution_setting", "true");
   url.searchParams.set("level", "ad");
   url.searchParams.set("limit", "100");
@@ -1174,6 +1190,13 @@ function addDaysUTC(base: Date, days: number): Date {
 }
 
 export function previousRangeForPreset(preset: string): { since: string; until: string } | null {
+  const custom = parseCustomPreset(preset);
+  if (custom) {
+    const since = new Date(`${custom.since}T00:00:00Z`);
+    const until = new Date(`${custom.until}T00:00:00Z`);
+    const days = Math.max(1, Math.round((until.getTime() - since.getTime()) / 86400_000) + 1);
+    return { since: ymd(addDaysUTC(since, -days)), until: ymd(addDaysUTC(until, -days)) };
+  }
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
   const dayN = (n: number) => {

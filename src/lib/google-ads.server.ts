@@ -74,6 +74,10 @@ function ymd(d: Date): string {
 }
 
 function dateClause(preset: string): string {
+  if (preset?.startsWith("custom:")) {
+    const [, since, until] = preset.split(":");
+    if (since && until) return `segments.date BETWEEN '${since}' AND '${until}'`;
+  }
   const d = DURING[preset];
   if (d) return `segments.date DURING ${d}`;
   const today = new Date();
