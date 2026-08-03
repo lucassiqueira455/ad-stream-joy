@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, Copy, Link2, Loader2, RefreshCcw, Share2 } from "lucide-react";
+import { Check, Copy, Link2, Loader2, Printer, RefreshCcw, Share2 } from "lucide-react";
 import {
   createOrRegenerateShare,
   getClientShare,
