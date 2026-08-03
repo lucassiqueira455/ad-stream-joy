@@ -82,9 +82,13 @@ export const disconnectPlatform = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-const DATE_PRESET_SCHEMA = z.enum([
-  "today", "yesterday", "last_3d", "last_7d", "last_14d", "last_28d",
-  "last_30d", "last_90d", "this_month", "last_month",
+const CUSTOM_RE = /^custom:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/;
+const DATE_PRESET_SCHEMA = z.union([
+  z.enum([
+    "today", "yesterday", "last_3d", "last_7d", "last_14d", "last_28d",
+    "last_30d", "last_90d", "this_month", "last_month",
+  ]),
+  z.string().regex(CUSTOM_RE),
 ]);
 const PLATFORM_SCHEMA = z.enum(["all", "meta", "google"]).default("all");
 

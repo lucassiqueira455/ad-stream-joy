@@ -2,10 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const DATE_PRESETS = [
-  "today", "yesterday", "last_3d", "last_7d", "last_14d", "last_28d",
-  "last_30d", "last_90d", "this_month", "last_month",
-] as const;
+const CUSTOM_RE = /^custom:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/;
+const DATE_PRESET_SCHEMA = z.union([
+  z.enum([
+    "today", "yesterday", "last_3d", "last_7d", "last_14d", "last_28d",
+    "last_30d", "last_90d", "this_month", "last_month",
+  ]),
+  z.string().regex(CUSTOM_RE),
+]);
 
 function generateToken(): string {
   // Uses Web Crypto (available in Workers). 32 random bytes → base64url.
@@ -112,7 +116,7 @@ export const getPublicReport = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z.object({
       token: z.string().min(20).max(200),
-      datePreset: z.enum(DATE_PRESETS).optional(),
+      datePreset: DATE_PRESET_SCHEMA.optional(),
       platform: PLATFORM_SCHEMA,
     }).parse(input),
   )
@@ -143,7 +147,7 @@ export const getPublicDashboard = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z.object({
       token: z.string().min(20).max(200),
-      datePreset: z.enum(DATE_PRESETS).optional(),
+      datePreset: DATE_PRESET_SCHEMA.optional(),
       platform: PLATFORM_SCHEMA,
     }).parse(input),
   )
