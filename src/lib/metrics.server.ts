@@ -23,7 +23,8 @@ import {
 
 export type DatePreset =
   | "today" | "yesterday" | "last_3d" | "last_7d" | "last_14d"
-  | "last_28d" | "last_30d" | "last_90d" | "this_month" | "last_month";
+  | "last_28d" | "last_30d" | "last_90d" | "this_month" | "last_month"
+  | (string & {});
 
 export type PlatformFilter = "all" | "meta" | "google";
 

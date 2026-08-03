@@ -24,32 +24,10 @@ import { getClientMetrics } from "@/lib/ads-connections.functions";
 import { getPublicReport } from "@/lib/shares.functions";
 import { MetricCard } from "@/components/metric-card";
 import { PlatformSelector, type PlatformFilter } from "@/components/platform-selector";
+import { DateRangeSelect, LastSync } from "@/components/date-range-select";
 
 
-type DatePreset =
-  | "today"
-  | "yesterday"
-  | "last_3d"
-  | "last_7d"
-  | "last_14d"
-  | "last_28d"
-  | "last_30d"
-  | "last_90d"
-  | "this_month"
-  | "last_month";
-
-const DATE_OPTIONS: { value: DatePreset; label: string }[] = [
-  { value: "today", label: "Hoje" },
-  { value: "yesterday", label: "Ontem" },
-  { value: "last_3d", label: "Últimos 3 dias" },
-  { value: "last_7d", label: "Últimos 7 dias" },
-  { value: "last_14d", label: "Últimos 14 dias" },
-  { value: "last_28d", label: "Últimos 28 dias" },
-  { value: "last_30d", label: "Últimos 30 dias" },
-  { value: "last_90d", label: "Últimos 90 dias" },
-  { value: "this_month", label: "Este mês" },
-  { value: "last_month", label: "Mês passado" },
-];
+type DatePreset = string;
 
 type Totals = {
   spend: number; impressions: number; reach: number; frequency: number; cpm: number;
@@ -239,6 +217,7 @@ export function ClientMetrics({ clientId, hasAccounts, publicToken, allowDateCha
           <p className="text-sm text-muted-foreground">
             Dados agregados de todas as contas vinculadas
           </p>
+          <LastSync at={query.dataUpdatedAt} fetching={query.isFetching} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <PlatformSelector
@@ -247,15 +226,7 @@ export function ClientMetrics({ clientId, hasAccounts, publicToken, allowDateCha
             connectedPlatforms={query.data?.connectedPlatforms}
           />
           {allowDateChange && (
-            <select
-              value={datePreset}
-              onChange={(e) => setDatePreset(e.target.value as DatePreset)}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            >
-              {DATE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+            <DateRangeSelect value={datePreset} onChange={setDatePreset} />
           )}
 
           <div className="relative">
@@ -314,7 +285,7 @@ export function ClientMetrics({ clientId, hasAccounts, publicToken, allowDateCha
             ) : (
               <RefreshCcw className="h-4 w-4" />
             )}
-            Atualizar
+            Atualizar dados
           </button>
         </div>
       </div>
