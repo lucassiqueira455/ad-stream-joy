@@ -103,22 +103,30 @@ export function ShareReportCard({ clientId }: { clientId: string }) {
   };
 
   return (
-    <section className="mt-6 rounded-xl border border-border bg-card p-6 shadow-card">
-      <div className="flex items-center gap-2">
+    <section className="mt-6 rounded-xl border border-border bg-card p-6 shadow-card print:hidden">
+      <div className="flex flex-wrap items-center gap-2">
         <Share2 className="h-4 w-4 text-muted-foreground" />
         <h2 className="font-display text-lg font-semibold">Compartilhamento</h2>
         {share && (
           <span
             className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${
-              share.active ? "bg-emerald-500/10 text-emerald-500" : "bg-muted text-muted-foreground"
+              share.active ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground"
             }`}
           >
             {share.active ? "Ativo" : "Inativo"}
           </span>
         )}
+        <button
+          onClick={() => window.print()}
+          className="ml-auto inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-accent"
+        >
+          <Printer className="h-4 w-4" />
+          Gerar PDF
+        </button>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
         Gere links públicos (somente leitura) para o cliente ver os dados sem fazer login.
+        O PDF respeita o cliente, o período e os filtros exibidos nesta página.
       </p>
 
       {shareQuery.isLoading ? (
