@@ -102,8 +102,8 @@ export function ShareReportCard({ clientId }: { clientId: string }) {
   });
 
   const share = shareQuery.data;
-  const reportUrl = share?.token ? `${origin}/report/${share.token}` : "";
-  const dashboardUrl = share?.dashboard_token ? `${origin}/dashboard/${share.dashboard_token}` : "";
+  const reportUrl = share?.token ? `${origin}/report-public/${share.token}` : "";
+  const dashboardUrl = share?.dashboard_token ? `${origin}/dashboard-public/${share.dashboard_token}` : "";
 
   const regenerate = async (kind: Kind | "both") => {
     if (share && kind !== "both" && !confirm(`Regenerar o link de ${kind === "report" ? "Relatório" : "Dashboard"} vai invalidar o atual. Continuar?`)) return;
