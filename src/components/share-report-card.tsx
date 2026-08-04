@@ -68,10 +68,18 @@ export function ShareReportCard({ clientId }: { clientId: string }) {
   const toggleActive = useServerFn(setShareActive);
   const toggleAllowDate = useServerFn(setShareAllowDateChange);
 
-  const [origin, setOrigin] = useState("");
+  // Public links must work for anonymous visitors. Preview/sandbox hosts require a
+  // workspace login, so fall back to the stable public host for those.
+  const PUBLIC_HOST = "https://project--eb42a111-1714-4f00-85bc-f0c40ccb97b4.lovable.app";
+  const [origin, setOrigin] = useState(PUBLIC_HOST);
   useEffect(() => {
-    if (typeof window !== "undefined") setOrigin(window.location.origin);
+    if (typeof window === "undefined") return;
+    const host = window.location.hostname;
+    const isPreview =
+      host.includes("id-preview--") || host.endsWith("-dev.lovable.app") || host === "localhost";
+    setOrigin(isPreview ? PUBLIC_HOST : window.location.origin);
   }, []);
+
 
   const shareQuery = useQuery({
     queryKey: ["client-share", clientId],
@@ -94,8 +102,8 @@ export function ShareReportCard({ clientId }: { clientId: string }) {
   });
 
   const share = shareQuery.data;
-  const reportUrl = share?.token ? `${origin}/report/${share.token}` : "";
-  const dashboardUrl = share?.dashboard_token ? `${origin}/dashboard/${share.dashboard_token}` : "";
+  const reportUrl = share?.token ? `${origin}/report-public/${share.token}` : "";
+  const dashboardUrl = share?.dashboard_token ? `${origin}/dashboard-public/${share.dashboard_token}` : "";
 
   const regenerate = async (kind: Kind | "both") => {
     if (share && kind !== "both" && !confirm(`Regenerar o link de ${kind === "report" ? "Relatório" : "Dashboard"} vai invalidar o atual. Continuar?`)) return;
