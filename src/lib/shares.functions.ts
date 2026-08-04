@@ -122,25 +122,24 @@ export const getPublicReport = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: share, error } = await supabaseAdmin
+    const { data: share } = await supabaseAdmin
       .from("client_shares")
       .select("client_id, active, allow_date_change")
       .eq("token", data.token)
       .maybeSingle();
-    if (error) throw error;
-    if (!share || !share.active) throw new Error("Link inválido ou desativado");
+    if (!share || !share.active) return { invalid: true as const };
 
-    const { data: client, error: cErr } = await supabaseAdmin
+    const { data: client } = await supabaseAdmin
       .from("clients").select("id, name, brand_color, logo").eq("id", share.client_id).maybeSingle();
-    if (cErr) throw cErr;
-    if (!client) throw new Error("Cliente não encontrado");
+    if (!client) return { invalid: true as const };
 
     const effectivePreset = data.datePreset ?? "last_30d";
     const { computeClientMetrics } = await import("./metrics.server");
     const metrics = await computeClientMetrics(supabaseAdmin, share.client_id, effectivePreset, data.platform);
 
-    return { client, allowDateChange: true, datePreset: effectivePreset, metrics };
+    return { invalid: false as const, client, allowDateChange: true, datePreset: effectivePreset, metrics };
   });
+
 
 // Public: dashboard data by dashboard_token.
 export const getPublicDashboard = createServerFn({ method: "POST" })
@@ -153,22 +152,21 @@ export const getPublicDashboard = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: share, error } = await supabaseAdmin
+    const { data: share } = await supabaseAdmin
       .from("client_shares")
       .select("client_id, active, allow_date_change")
       .eq("dashboard_token", data.token)
       .maybeSingle();
-    if (error) throw error;
-    if (!share || !share.active) throw new Error("Link inválido ou desativado");
+    if (!share || !share.active) return { invalid: true as const };
 
-    const { data: client, error: cErr } = await supabaseAdmin
+    const { data: client } = await supabaseAdmin
       .from("clients").select("id, name, brand_color, logo").eq("id", share.client_id).maybeSingle();
-    if (cErr) throw cErr;
-    if (!client) throw new Error("Cliente não encontrado");
+    if (!client) return { invalid: true as const };
 
     const effectivePreset = data.datePreset ?? "last_30d";
     const { computeClientDashboard } = await import("./metrics.server");
     const dashboard = await computeClientDashboard(supabaseAdmin, share.client_id, effectivePreset, data.platform);
 
-    return { client, allowDateChange: true, datePreset: effectivePreset, dashboard };
+    return { invalid: false as const, client, allowDateChange: true, datePreset: effectivePreset, dashboard };
+
   });

@@ -52,8 +52,10 @@ export const Route = createFileRoute("/report-public/$token")({
 function PublicReport() {
   const { token } = Route.useParams();
   const { data } = useSuspenseQuery(reportQuery(token));
+  if (data.invalid || !data.client) return <InvalidLink />;
   const { client, allowDateChange, metrics } = data;
   const hasAccounts = (metrics?.accounts?.length ?? 0) > 0;
+
 
   return (
     <div className="min-h-screen bg-background">
