@@ -52,8 +52,10 @@ export const Route = createFileRoute("/dashboard-public/$token")({
 function PublicDashboard() {
   const { token } = Route.useParams();
   const { data } = useSuspenseQuery(dashboardQuery(token));
+  if (data.invalid || !data.client) return <InvalidLink />;
   const { client, allowDateChange, dashboard } = data;
   const hasAccounts = (dashboard?.accounts?.length ?? 0) > 0;
+
 
   return (
     <div className="min-h-screen bg-background">
