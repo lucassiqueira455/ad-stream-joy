@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth.index'
 import { Route as ReportTokenRouteImport } from './routes/report.$token'
+import { Route as ReportPublicTokenRouteImport } from './routes/report-public.$token'
 import { Route as DashboardTokenRouteImport } from './routes/dashboard.$token'
 import { Route as AuthSignupRouteImport } from './routes/auth.signup'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
@@ -55,6 +56,11 @@ const AuthIndexRoute = AuthIndexRouteImport.update({
 const ReportTokenRoute = ReportTokenRouteImport.update({
   id: '/report/$token',
   path: '/report/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportPublicTokenRoute = ReportPublicTokenRouteImport.update({
+  id: '/report-public/$token',
+  path: '/report-public/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardTokenRoute = DashboardTokenRouteImport.update({
@@ -164,6 +170,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/signup': typeof AuthSignupRoute
   '/dashboard/$token': typeof DashboardTokenRoute
+  '/report-public/$token': typeof ReportPublicTokenRoute
   '/report/$token': typeof ReportTokenRoute
   '/auth/': typeof AuthIndexRoute
   '/app/reports': typeof AuthenticatedAppReportsRoute
@@ -186,6 +193,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/signup': typeof AuthSignupRoute
   '/dashboard/$token': typeof DashboardTokenRoute
+  '/report-public/$token': typeof ReportPublicTokenRoute
   '/report/$token': typeof ReportTokenRoute
   '/auth': typeof AuthIndexRoute
   '/app/reports': typeof AuthenticatedAppReportsRoute
@@ -211,6 +219,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/signup': typeof AuthSignupRoute
   '/dashboard/$token': typeof DashboardTokenRoute
+  '/report-public/$token': typeof ReportPublicTokenRoute
   '/report/$token': typeof ReportTokenRoute
   '/auth/': typeof AuthIndexRoute
   '/_authenticated/app/reports': typeof AuthenticatedAppReportsRoute
@@ -237,6 +246,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/signup'
     | '/dashboard/$token'
+    | '/report-public/$token'
     | '/report/$token'
     | '/auth/'
     | '/app/reports'
@@ -259,6 +269,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/signup'
     | '/dashboard/$token'
+    | '/report-public/$token'
     | '/report/$token'
     | '/auth'
     | '/app/reports'
@@ -283,6 +294,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/signup'
     | '/dashboard/$token'
+    | '/report-public/$token'
     | '/report/$token'
     | '/auth/'
     | '/_authenticated/app/reports'
@@ -306,6 +318,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
   DashboardTokenRoute: typeof DashboardTokenRoute
+  ReportPublicTokenRoute: typeof ReportPublicTokenRoute
   ReportTokenRoute: typeof ReportTokenRoute
   ApiAuthGa4CallbackRoute: typeof ApiAuthGa4CallbackRoute
   ApiAuthGoogleCallbackRoute: typeof ApiAuthGoogleCallbackRoute
@@ -347,6 +360,13 @@ declare module '@tanstack/react-router' {
       path: '/report/$token'
       fullPath: '/report/$token'
       preLoaderRoute: typeof ReportTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/report-public/$token': {
+      id: '/report-public/$token'
+      path: '/report-public/$token'
+      fullPath: '/report-public/$token'
+      preLoaderRoute: typeof ReportPublicTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/$token': {
@@ -559,6 +579,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
   DashboardTokenRoute: DashboardTokenRoute,
+  ReportPublicTokenRoute: ReportPublicTokenRoute,
   ReportTokenRoute: ReportTokenRoute,
   ApiAuthGa4CallbackRoute: ApiAuthGa4CallbackRoute,
   ApiAuthGoogleCallbackRoute: ApiAuthGoogleCallbackRoute,
