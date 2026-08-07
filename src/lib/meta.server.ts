@@ -878,6 +878,13 @@ export async function fetchAdAccountInsights(params: {
     roas,
     add_to_cart,
     initiate_checkout,
+    view_content,
+    add_payment_info,
+    complete_registration,
+    contact,
+    schedule,
+    subscribe,
+
     profile_visits,
     cost_per_profile_visit,
     page_engagement,

@@ -102,6 +102,9 @@ export async function computeClientMetrics(supabase: SupabaseClient<any>, client
       spend: 0, impressions: 0, reach: 0, clicks: 0, link_clicks: 0,
       landing_page_views: 0, purchases: 0, leads: 0, messaging_conversations: 0,
       purchase_value: 0, add_to_cart: 0, initiate_checkout: 0,
+      view_content: 0, add_payment_info: 0, complete_registration: 0,
+      contact: 0, schedule: 0, subscribe: 0,
+
       profile_visits: 0, page_engagement: 0, post_engagement: 0, video_views: 0,
       conversion_cost_total: 0, profile_visit_cost_total: 0,
     };
