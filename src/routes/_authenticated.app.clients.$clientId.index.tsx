@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { ClientDashboardView } from "@/components/client-dashboard";
 import { OrganicPanel } from "@/components/organic-panel";
+import { ExportPdfButton } from "@/components/export-pdf-button";
 import { listAdAccounts } from "@/lib/ads-connections.functions";
 
 const adAccountsQuery = queryOptions({
@@ -19,6 +20,9 @@ function DashboardTab() {
   const hasAccounts = accounts.some((a) => a.client_id === clientId);
   return (
     <>
+      <div className="mb-2 flex justify-end print:hidden">
+        <ExportPdfButton label="Gerar PDF do dashboard" />
+      </div>
       <ClientDashboardView clientId={clientId} hasAccounts={hasAccounts} />
       <OrganicPanel clientId={clientId} />
     </>

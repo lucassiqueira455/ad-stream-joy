@@ -3,6 +3,8 @@ import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { ClientMetrics } from "@/components/client-metrics";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ExportPdfButton } from "@/components/export-pdf-button";
+
 import { getPublicReport } from "@/lib/shares.functions";
 import { initialsFromName } from "@/lib/mock-data";
 
@@ -74,11 +76,13 @@ function PublicReport() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <ExportPdfButton />
             <ThemeToggle className="print:hidden" />
             <div className="opacity-70">
               <Logo />
             </div>
           </div>
+
         </div>
       </header>
 
