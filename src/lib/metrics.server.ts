@@ -123,6 +123,13 @@ export async function computeClientMetrics(supabase: SupabaseClient<any>, client
       s.purchase_value += i.purchase_value;
       s.add_to_cart += i.add_to_cart;
       s.initiate_checkout += i.initiate_checkout;
+      s.view_content += i.view_content ?? 0;
+      s.add_payment_info += i.add_payment_info ?? 0;
+      s.complete_registration += i.complete_registration ?? 0;
+      s.contact += i.contact ?? 0;
+      s.schedule += i.schedule ?? 0;
+      s.subscribe += i.subscribe ?? 0;
+
       s.profile_visits += i.profile_visits;
       s.page_engagement += i.page_engagement;
       s.post_engagement += i.post_engagement;
@@ -157,6 +164,13 @@ export async function computeClientMetrics(supabase: SupabaseClient<any>, client
       roas: s.spend > 0 ? s.purchase_value / s.spend : 0,
       add_to_cart: s.add_to_cart,
       initiate_checkout: s.initiate_checkout,
+      view_content: s.view_content,
+      add_payment_info: s.add_payment_info,
+      complete_registration: s.complete_registration,
+      contact: s.contact,
+      schedule: s.schedule,
+      subscribe: s.subscribe,
+
       profile_visits: s.profile_visits,
       cost_per_profile_visit: s.profile_visits > 0 ? s.profile_visit_cost_total / s.profile_visits : 0,
       page_engagement: s.page_engagement,
