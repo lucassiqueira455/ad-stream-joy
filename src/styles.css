@@ -307,6 +307,15 @@
     break-inside: avoid;
     page-break-inside: avoid;
   }
+  /* Keep chart colors and images in the PDF */
+  svg, img, .recharts-wrapper, [class*="gradient-"] {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .recharts-wrapper, .recharts-surface { break-inside: avoid; }
+  table { break-inside: auto; }
+  tr { break-inside: avoid; }
   h1, h2, h3 { break-after: avoid; }
   a[href]::after { content: ""; }
 }
+
