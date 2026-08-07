@@ -163,6 +163,14 @@ export interface MetaInsights {
   roas: number;
   add_to_cart: number;
   initiate_checkout: number;
+  // optional extra conversion events (Meta only)
+  view_content?: number;
+  add_payment_info?: number;
+  complete_registration?: number;
+  contact?: number;
+  schedule?: number;
+  subscribe?: number;
+
   // engagement
   profile_visits: number;
   cost_per_profile_visit: number;
@@ -246,6 +254,40 @@ const IC_TYPES = [
   "omni_initiated_checkout",
 ];
 const LPV_TYPES = ["landing_page_view", "omni_landing_page_view"];
+const VIEW_CONTENT_TYPES = [
+  "view_content",
+  "omni_view_content",
+  "offsite_conversion.fb_pixel_view_content",
+  "onsite_conversion.view_content",
+];
+const ADD_PAYMENT_INFO_TYPES = [
+  "add_payment_info",
+  "omni_add_payment_info",
+  "offsite_conversion.fb_pixel_add_payment_info",
+];
+const COMPLETE_REGISTRATION_TYPES = [
+  "complete_registration",
+  "omni_complete_registration",
+  "offsite_conversion.fb_pixel_complete_registration",
+  "onsite_conversion.complete_registration",
+];
+const CONTACT_TYPES = [
+  "contact",
+  "omni_contact",
+  "offsite_conversion.fb_pixel_contact",
+  "onsite_conversion.contact",
+];
+const SCHEDULE_TYPES = [
+  "schedule",
+  "omni_schedule",
+  "offsite_conversion.fb_pixel_schedule",
+];
+const SUBSCRIBE_TYPES = [
+  "subscribe",
+  "omni_subscribe",
+  "offsite_conversion.fb_pixel_subscribe",
+];
+
 const OTHER_CONVERSION_TYPES = [
   "contact",
   "omni_contact",
@@ -478,9 +520,17 @@ function buildConversionDetails(
     .filter((item): item is { action: MetaActionStat; classification: ConversionClassification; value: number } => Boolean(item.classification) && item.value > 0);
 
   if (officialConversions.length > 0) {
+    // Meta returns several alias rows for the same event (ex: `purchase`,
+    // `omni_purchase`, `offsite_conversion.fb_pixel_purchase`). Summing them
+    // multiplies the real result, so keep only the largest row per family.
+    const byFamily: Record<string, { action: MetaActionStat; classification: ConversionClassification; value: number }> = {};
+    for (const item of officialConversions) {
+      const prev = byFamily[item.classification.family];
+      if (!prev || item.value > prev.value) byFamily[item.classification.family] = item;
+    }
     const out: Record<string, number> = {};
     const counted: CountedConversion[] = [];
-    for (const item of officialConversions) {
+    for (const item of Object.values(byFamily)) {
       out[item.classification.bucket] = (out[item.classification.bucket] ?? 0) + item.value;
       counted.push({
         actionType: item.action.action_type,
@@ -488,6 +538,7 @@ function buildConversionDetails(
         value: item.value,
       });
     }
+
     return { breakdown: out, counted };
   }
 
@@ -748,13 +799,22 @@ export async function fetchAdAccountInsights(params: {
   const clicks = num(row.clicks);
   const link_clicks = num(row.inline_link_clicks);
 
-  const purchases = sumActions(row.actions, PURCHASE_TYPES);
-  const leads = sumActions(row.actions, LEAD_TYPES);
+  // Alias rows (`purchase`, `omni_purchase`, `offsite_conversion.fb_pixel_purchase`, ...)
+  // describe the same event. Take the largest instead of summing to avoid 2-3x inflation.
+  const purchases = maxActionValue([row.actions, row.conversions], PURCHASE_TYPES);
+  const leads = maxActionValue([row.actions, row.conversions], LEAD_TYPES);
   const messaging_conversations = sumMessagingConversations(row.actions);
-  const add_to_cart = sumActions(row.actions, ATC_TYPES);
-  const initiate_checkout = sumActions(row.actions, IC_TYPES);
-  const landing_page_views = sumActions(row.actions, LPV_TYPES);
-  const purchase_value = sumActions(row.action_values, PURCHASE_TYPES);
+  const add_to_cart = maxActionValue([row.actions, row.conversions], ATC_TYPES);
+  const initiate_checkout = maxActionValue([row.actions, row.conversions], IC_TYPES);
+  const landing_page_views = maxActionValue([row.actions], LPV_TYPES);
+  const purchase_value = maxActionValue([row.action_values, row.conversion_values], PURCHASE_TYPES);
+  const view_content = maxActionValue([row.actions, row.conversions], VIEW_CONTENT_TYPES);
+  const add_payment_info = maxActionValue([row.actions, row.conversions], ADD_PAYMENT_INFO_TYPES);
+  const complete_registration = maxActionValue([row.actions, row.conversions], COMPLETE_REGISTRATION_TYPES);
+  const contact = maxActionValue([row.actions, row.conversions], CONTACT_TYPES);
+  const schedule = maxActionValue([row.actions, row.conversions], SCHEDULE_TYPES);
+  const subscribe = maxActionValue([row.actions, row.conversions], SUBSCRIBE_TYPES);
+
   const accountProfileVisits = maxActionValueWhere([row.actions, row.conversions], isProfileVisitType);
   const page_engagement = sumActions(row.actions, PAGE_ENGAGEMENT_TYPES);
   const post_engagement = sumActions(row.actions, POST_ENGAGEMENT_TYPES);
@@ -818,6 +878,13 @@ export async function fetchAdAccountInsights(params: {
     roas,
     add_to_cart,
     initiate_checkout,
+    view_content,
+    add_payment_info,
+    complete_registration,
+    contact,
+    schedule,
+    subscribe,
+
     profile_visits,
     cost_per_profile_visit,
     page_engagement,

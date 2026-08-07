@@ -36,11 +36,14 @@ type Totals = {
   results: number; cost_per_result: number;
   leads: number; messaging_conversations: number; purchases: number; purchase_value: number; roas: number;
   add_to_cart: number; initiate_checkout: number;
+  view_content?: number; add_payment_info?: number; complete_registration?: number;
+  contact?: number; schedule?: number; subscribe?: number;
   profile_visits: number; cost_per_profile_visit: number;
   page_engagement: number; post_engagement: number; video_views: number;
   conversions: number; cost_per_conversion: number;
   conversions_breakdown: Record<string, number>;
 };
+
 
 type MetricFormat = "currency" | "number" | "percent" | "decimal";
 
@@ -69,10 +72,23 @@ const METRICS: MetricDef[] = [
   { key: "conversions", label: "Conversões", icon: Trophy, format: "number", group: "Conversões", get: (t) => t.conversions },
   { key: "cost_per_conversion", label: "Custo por conversão", icon: DollarSign, format: "currency", group: "Conversões", get: (t) => t.cost_per_conversion },
   { key: "purchases", label: "Compras", icon: ShoppingCart, format: "number", group: "Conversões", get: (t) => t.purchases },
-  { key: "purchase_value", label: "Valor de conversão", icon: DollarSign, format: "currency", group: "Conversões", get: (t) => t.purchase_value },
+  { key: "purchase_value", label: "Valor de conversão (compras)", icon: DollarSign, format: "currency", group: "Conversões", get: (t) => t.purchase_value },
+  { key: "cost_per_purchase", label: "Custo por compra", icon: DollarSign, format: "currency", group: "Conversões", get: (t) => (t.purchases > 0 ? t.spend / t.purchases : 0) },
+  { key: "aov", label: "Ticket médio", icon: DollarSign, format: "currency", group: "Conversões", get: (t) => (t.purchases > 0 ? t.purchase_value / t.purchases : 0) },
   { key: "roas", label: "ROAS", icon: BarChart3, format: "decimal", group: "Conversões", get: (t) => t.roas },
+  { key: "leads", label: "Leads", icon: UserRound, format: "number", group: "Conversões", get: (t) => t.leads },
+  { key: "cost_per_lead", label: "Custo por lead", icon: DollarSign, format: "currency", group: "Conversões", get: (t) => (t.leads > 0 ? t.spend / t.leads : 0) },
+  { key: "messaging", label: "Conversas iniciadas", icon: Heart, format: "number", group: "Conversões", get: (t) => t.messaging_conversations },
   { key: "atc", label: "Adições ao carrinho", icon: ShoppingCart, format: "number", group: "Conversões", get: (t) => t.add_to_cart },
   { key: "ic", label: "Checkouts iniciados", icon: ShoppingCart, format: "number", group: "Conversões", get: (t) => t.initiate_checkout },
+  { key: "cost_per_ic", label: "Custo por checkout", icon: DollarSign, format: "currency", group: "Conversões", get: (t) => (t.initiate_checkout > 0 ? t.spend / t.initiate_checkout : 0) },
+  { key: "view_content", label: "Visualizações de conteúdo", icon: Eye, format: "number", group: "Conversões", get: (t) => t.view_content ?? 0 },
+  { key: "add_payment_info", label: "Informações de pagamento", icon: ShoppingCart, format: "number", group: "Conversões", get: (t) => t.add_payment_info ?? 0 },
+  { key: "complete_registration", label: "Cadastros concluídos", icon: UserRound, format: "number", group: "Conversões", get: (t) => t.complete_registration ?? 0 },
+  { key: "contact", label: "Contatos", icon: UserRound, format: "number", group: "Conversões", get: (t) => t.contact ?? 0 },
+  { key: "schedule", label: "Agendamentos", icon: Target, format: "number", group: "Conversões", get: (t) => t.schedule ?? 0 },
+  { key: "subscribe", label: "Assinaturas", icon: Trophy, format: "number", group: "Conversões", get: (t) => t.subscribe ?? 0 },
+
 
 
   { key: "profile_visits", label: "Visitas ao perfil", icon: UserRound, format: "number", group: "Engajamento", get: (t) => t.profile_visits },
