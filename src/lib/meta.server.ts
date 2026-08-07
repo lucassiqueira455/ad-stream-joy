@@ -765,13 +765,22 @@ export async function fetchAdAccountInsights(params: {
   const clicks = num(row.clicks);
   const link_clicks = num(row.inline_link_clicks);
 
-  const purchases = sumActions(row.actions, PURCHASE_TYPES);
-  const leads = sumActions(row.actions, LEAD_TYPES);
+  // Alias rows (`purchase`, `omni_purchase`, `offsite_conversion.fb_pixel_purchase`, ...)
+  // describe the same event. Take the largest instead of summing to avoid 2-3x inflation.
+  const purchases = maxActionValue([row.actions, row.conversions], PURCHASE_TYPES);
+  const leads = maxActionValue([row.actions, row.conversions], LEAD_TYPES);
   const messaging_conversations = sumMessagingConversations(row.actions);
-  const add_to_cart = sumActions(row.actions, ATC_TYPES);
-  const initiate_checkout = sumActions(row.actions, IC_TYPES);
-  const landing_page_views = sumActions(row.actions, LPV_TYPES);
-  const purchase_value = sumActions(row.action_values, PURCHASE_TYPES);
+  const add_to_cart = maxActionValue([row.actions, row.conversions], ATC_TYPES);
+  const initiate_checkout = maxActionValue([row.actions, row.conversions], IC_TYPES);
+  const landing_page_views = maxActionValue([row.actions], LPV_TYPES);
+  const purchase_value = maxActionValue([row.action_values, row.conversion_values], PURCHASE_TYPES);
+  const view_content = maxActionValue([row.actions, row.conversions], VIEW_CONTENT_TYPES);
+  const add_payment_info = maxActionValue([row.actions, row.conversions], ADD_PAYMENT_INFO_TYPES);
+  const complete_registration = maxActionValue([row.actions, row.conversions], COMPLETE_REGISTRATION_TYPES);
+  const contact = maxActionValue([row.actions, row.conversions], CONTACT_TYPES);
+  const schedule = maxActionValue([row.actions, row.conversions], SCHEDULE_TYPES);
+  const subscribe = maxActionValue([row.actions, row.conversions], SUBSCRIBE_TYPES);
+
   const accountProfileVisits = maxActionValueWhere([row.actions, row.conversions], isProfileVisitType);
   const page_engagement = sumActions(row.actions, PAGE_ENGAGEMENT_TYPES);
   const post_engagement = sumActions(row.actions, POST_ENGAGEMENT_TYPES);
