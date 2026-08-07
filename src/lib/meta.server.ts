@@ -163,6 +163,14 @@ export interface MetaInsights {
   roas: number;
   add_to_cart: number;
   initiate_checkout: number;
+  // optional extra conversion events (Meta only)
+  view_content?: number;
+  add_payment_info?: number;
+  complete_registration?: number;
+  contact?: number;
+  schedule?: number;
+  subscribe?: number;
+
   // engagement
   profile_visits: number;
   cost_per_profile_visit: number;
