@@ -486,9 +486,17 @@ function buildConversionDetails(
     .filter((item): item is { action: MetaActionStat; classification: ConversionClassification; value: number } => Boolean(item.classification) && item.value > 0);
 
   if (officialConversions.length > 0) {
+    // Meta returns several alias rows for the same event (ex: `purchase`,
+    // `omni_purchase`, `offsite_conversion.fb_pixel_purchase`). Summing them
+    // multiplies the real result, so keep only the largest row per family.
+    const byFamily: Record<string, { action: MetaActionStat; classification: ConversionClassification; value: number }> = {};
+    for (const item of officialConversions) {
+      const prev = byFamily[item.classification.family];
+      if (!prev || item.value > prev.value) byFamily[item.classification.family] = item;
+    }
     const out: Record<string, number> = {};
     const counted: CountedConversion[] = [];
-    for (const item of officialConversions) {
+    for (const item of Object.values(byFamily)) {
       out[item.classification.bucket] = (out[item.classification.bucket] ?? 0) + item.value;
       counted.push({
         actionType: item.action.action_type,
@@ -496,6 +504,7 @@ function buildConversionDetails(
         value: item.value,
       });
     }
+
     return { breakdown: out, counted };
   }
 
