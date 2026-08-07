@@ -36,11 +36,14 @@ type Totals = {
   results: number; cost_per_result: number;
   leads: number; messaging_conversations: number; purchases: number; purchase_value: number; roas: number;
   add_to_cart: number; initiate_checkout: number;
+  view_content?: number; add_payment_info?: number; complete_registration?: number;
+  contact?: number; schedule?: number; subscribe?: number;
   profile_visits: number; cost_per_profile_visit: number;
   page_engagement: number; post_engagement: number; video_views: number;
   conversions: number; cost_per_conversion: number;
   conversions_breakdown: Record<string, number>;
 };
+
 
 type MetricFormat = "currency" | "number" | "percent" | "decimal";
 
