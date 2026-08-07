@@ -254,6 +254,40 @@ const IC_TYPES = [
   "omni_initiated_checkout",
 ];
 const LPV_TYPES = ["landing_page_view", "omni_landing_page_view"];
+const VIEW_CONTENT_TYPES = [
+  "view_content",
+  "omni_view_content",
+  "offsite_conversion.fb_pixel_view_content",
+  "onsite_conversion.view_content",
+];
+const ADD_PAYMENT_INFO_TYPES = [
+  "add_payment_info",
+  "omni_add_payment_info",
+  "offsite_conversion.fb_pixel_add_payment_info",
+];
+const COMPLETE_REGISTRATION_TYPES = [
+  "complete_registration",
+  "omni_complete_registration",
+  "offsite_conversion.fb_pixel_complete_registration",
+  "onsite_conversion.complete_registration",
+];
+const CONTACT_TYPES = [
+  "contact",
+  "omni_contact",
+  "offsite_conversion.fb_pixel_contact",
+  "onsite_conversion.contact",
+];
+const SCHEDULE_TYPES = [
+  "schedule",
+  "omni_schedule",
+  "offsite_conversion.fb_pixel_schedule",
+];
+const SUBSCRIBE_TYPES = [
+  "subscribe",
+  "omni_subscribe",
+  "offsite_conversion.fb_pixel_subscribe",
+];
+
 const OTHER_CONVERSION_TYPES = [
   "contact",
   "omni_contact",
